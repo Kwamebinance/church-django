@@ -1,0 +1,13 @@
+{% extends "base_auth.html" %}
+{% block title %}Enter code{% endblock %}
+{% block content %}
+<h1 class="page-title">Enter your code</h1>
+<p class="muted">Code sent to {{ phone }}. In dev mode, check the server console.</p>
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <label for="id_code">6-digit code</label>{{ form.code }}
+  <button type="submit" style="width:100%;margin-top:18px;">Verify &amp; sign in</button>
+</form>
+<div class="alt"><a href="{% url 'login_otp_request' %}">Use a different number</a></div>
+{% endblock %}

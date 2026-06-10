@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'create' %}New member{% else %}Edit member{% endif %}{% endblock %}
+{% block page_heading %}{% if mode == 'create' %}New member{% else %}Edit {{ m.surname }} {{ m.other_names }}{% endif %}{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:720px;">
+  {% if mode == 'edit' %}<p class="muted">Member code: {{ m.member_code }} (assigned automatically; not editable)</p>{% endif %}
+  {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors|join:", " }}</div>{% endif %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px;">
+      {% for field in form %}
+        <div {% if field.name in 'address,inactive_reason' %}style="grid-column:1 / -1;"{% endif %}>
+          <label>{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="alert alert-error">{{ field.errors|join:", " }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <button type="submit" style="margin-top:18px;">{% if mode == 'create' %}Create member{% else %}Save changes{% endif %}</button>
+    {% if mode == 'edit' %}
+      <a class="btn-ghost" href="{% url 'member_detail' m.id %}" style="margin-left:8px;">Cancel</a>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

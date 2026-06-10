@@ -1,0 +1,12 @@
+{% extends "base_auth.html" %}
+{% block title %}Sign in with phone{% endblock %}
+{% block content %}
+<h1 class="page-title">Sign in with phone</h1>
+<p class="muted">We'll send a 6-digit code to your phone.</p>
+<form method="post">
+  {% csrf_token %}
+  <label for="id_phone">Phone number</label>{{ form.phone }}
+  <button type="submit" style="width:100%;margin-top:18px;">Send code</button>
+</form>
+<div class="alt"><a href="{% url 'login_email' %}">Sign in with email instead</a></div>
+{% endblock %}

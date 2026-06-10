@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Archive member{% endblock %}
+{% block page_heading %}Archive member{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;">
+  <h2>Archive {{ m.surname }} {{ m.other_names }}?</h2>
+  <p class="muted">Archiving marks the member inactive and hides them from the
+  default list. This does not delete any data.</p>
+  <form method="post">
+    {% csrf_token %}
+    <label>Reason (optional)</label>
+    <input type="text" name="reason" placeholder="e.g. relocated, transferred">
+    <button type="submit" class="btn-danger" style="margin-top:14px;">Archive member</button>
+    <a class="btn-ghost" href="{% url 'member_detail' m.id %}" style="margin-left:8px;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

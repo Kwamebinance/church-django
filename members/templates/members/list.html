@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Members{% endblock %}
+{% block page_heading %}Members{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block topbar_actions %}<a class="btn btn-accent" href="{% url 'member_create' %}">+ New member</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="filter-grid">
+    <div class="filter-search"><label>Search</label>{{ form.q }}</div>
+    <div><label>Cell</label>{{ form.cell }}</div>
+    <div><label>Fellowship</label>{{ form.fellowship }}</div>
+    <div><label>Status</label>{{ form.status }}</div>
+    <div><label>Gender</label>{{ form.gender }}</div>
+    <div><label>Marital</label>{{ form.marital_status }}</div>
+    <div><label>Baptism</label>{{ form.baptism_status }}</div>
+    <div><label>Foundation school</label>{{ form.foundation_school_status }}</div>
+    <div class="filter-actions">
+      <button type="submit">Filter</button>
+      {% if querystring %}<a class="btn-ghost" href="{% url 'member_list' %}">Clear</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <p class="muted" style="margin-top:0;">{{ total }} member{{ total|pluralize }}</p>
+  {% if page.object_list %}
+  <table class="data">
+    <tr><th>Name</th><th>Member code</th><th>Cell</th><th>Phone</th><th>Status</th></tr>
+    {% for m in page.object_list %}
+    <tr>
+      <td><a href="{% url 'member_detail' m.id %}">{{ m.surname }} {{ m.other_names }}</a></td>
+      <td class="muted">{{ m.member_code }}</td>
+      <td>{{ m.cell|default:"—" }}</td>
+      <td>{{ m.phone_primary|default:"—" }}</td>
+      <td>{% if m.is_active %}<span class="badge badge-ok">Active</span>{% else %}<span class="badge badge-warn">Inactive</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  {% if page.has_other_pages %}
+  <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
+    {% if page.has_previous %}<a class="btn-ghost" href="?{{ querystring }}&page={{ page.previous_page_number }}">&larr; Prev</a>{% endif %}
+    <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn-ghost" href="?{{ querystring }}&page={{ page.next_page_number }}">Next &rarr;</a>{% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="muted">No members match your filters.</p>
+  {% endif %}
+</div>
+{% endblock %}

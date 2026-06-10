@@ -1,0 +1,16 @@
+{% extends "base_auth.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<h1 class="page-title">Sign in</h1>
+<p class="muted">Welcome back. Sign in to continue.</p>
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+<form method="post">
+  {% csrf_token %}
+  <label for="id_email">Email</label>{{ form.email }}
+  <label for="id_password">Password</label>{{ form.password }}
+  <button type="submit" style="width:100%;margin-top:18px;">Sign in</button>
+</form>
+<div class="alt"><a href="{% url 'login_otp_request' %}">Sign in with phone instead</a></div>
+<div class="alt"><a href="{% url 'reset_request' %}">Forgot your password?</a></div>
+<div class="alt faint">New here? <a href="{% url 'register' %}">Register</a></div>
+{% endblock %}

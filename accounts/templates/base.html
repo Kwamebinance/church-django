@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Church Management System{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="mark">CE</span> Church MS</div>
+      <nav>
+        <div class="nav-section">Overview</div>
+        <a class="nav-link {% block nav_dashboard %}{% endblock %}" href="{% url 'dashboard' %}">Dashboard</a>
+
+        <div class="nav-section">People</div>
+        <a class="nav-link {% block nav_members %}{% endblock %}" href="{% url 'member_list' %}">Members</a>
+        <a class="nav-link {% block nav_registrations %}{% endblock %}" href="{% url 'reg_queue' %}">Registrations</a>
+
+        <div class="nav-section">Admin</div>
+        <a class="nav-link" href="/admin/">Django admin</a>
+      </nav>
+      <div class="nav-foot">
+        <div class="who">{{ request.user.email|default:request.user.phone }}</div>
+        {% if request.profile %}<div class="role">{{ request.profile.get_access_level_display }}</div>{% endif %}
+        <div style="margin-top:8px;"><a href="{% url 'logout' %}">Log out</a></div>
+      </div>
+    </aside>
+    <div class="content">
+      <div class="topbar">
+        <h1>{% block page_heading %}{% endblock %}</h1>
+        {% block topbar_actions %}{% endblock %}
+      </div>
+      <div class="page">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

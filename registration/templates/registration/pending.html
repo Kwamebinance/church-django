@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Awaiting approval{% endblock %}
+{% block page_heading %}Awaiting approval{% endblock %}
+{% block content %}
+<div class="card">
+  {% if req and req.status == 'rejected' %}
+    <div class="alert alert-error">Your registration was not approved.
+      {% if req.review_notes %}Reason: {{ req.review_notes }}{% endif %}</div>
+    <p class="muted">Please contact your cell leader for help.</p>
+  {% else %}
+    <h2>Thanks &mdash; your registration is awaiting approval</h2>
+    <p>Your details have been sent to your cell leader. You'll have full access
+    once they confirm you. You can sign in again later to check.</p>
+    {% if req %}<p class="muted">Cell: {{ req.cell }} &middot; Church: {{ req.church }}</p>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

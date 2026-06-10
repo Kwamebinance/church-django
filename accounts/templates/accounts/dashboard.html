@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Welcome</h2>
+  {% if profile %}
+    <p>You are signed in as <span class="badge badge-ok">{{ profile.get_access_level_display }}</span></p>
+    {% if profile.church %}<p class="muted">Church: {{ profile.church }}</p>{% endif %}
+    {% if profile.member %}<p class="muted">Linked member: {{ profile.member }}</p>
+    {% else %}<p class="muted">This account is not linked to a member record (e.g. super admin).</p>{% endif %}
+  {% else %}
+    <p class="muted">No profile is attached to this account yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

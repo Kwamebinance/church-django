@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ m.surname }} {{ m.other_names }}{% endblock %}
+{% block page_heading %}{{ m.surname }} {{ m.other_names }}{% endblock %}
+{% block nav_members %}active{% endblock %}
+{% block topbar_actions %}
+  <a class="btn" href="{% url 'member_edit' m.id %}">Edit</a>
+{% endblock %}
+{% block content %}
+<div class="card" style="display:flex;gap:22px;align-items:flex-start;">
+  {% if m.official_photo_path %}
+    <img src="{{ MEDIA_URL }}{{ m.official_photo_path }}" alt="photo"
+         style="width:140px;height:140px;object-fit:cover;border-radius:var(--r-lg);border:1px solid var(--line);">
+  {% endif %}
+  <div>
+    <h2 style="margin-top:0;">{{ m.title }} {{ m.surname }} {{ m.other_names }}
+      {% if m.is_active %}<span class="badge badge-ok">Active</span>{% else %}<span class="badge badge-warn">Inactive</span>{% endif %}
+    </h2>
+    <p class="muted">{{ m.member_code }} &middot; {{ m.church }}{% if m.cell %} &middot; {{ m.cell }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Contact</h2>
+  <table class="data">
+    <tr><th>Phone</th><td>{{ m.phone_primary|default:"—" }}</td></tr>
+    <tr><th>WhatsApp</th><td>{{ m.phone_whatsapp|default:"—" }}</td></tr>
+    <tr><th>Telegram</th><td>{{ m.telegram_username|default:"—" }}</td></tr>
+    <tr><th>Email</th><td>{{ m.email|default:"—" }}</td></tr>
+    <tr><th>Address</th><td>{{ m.address|default:"—" }}{% if m.city %}, {{ m.city }}{% endif %}{% if m.country %}, {{ m.country }}{% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Details</h2>
+  <table class="data">
+    <tr><th>Gender</th><td>{{ m.get_gender_display|default:"—" }}</td></tr>
+    <tr><th>Date of birth</th><td>{{ m.date_of_birth|default:"—" }}</td></tr>
+    <tr><th>Marital status</th><td>{{ m.get_marital_status_display|default:"—" }}</td></tr>
+    <tr><th>Occupation</th><td>{{ m.occupation|default:"—" }}{% if m.employer %} at {{ m.employer }}{% endif %}</td></tr>
+    <tr><th>Baptism</th><td>{{ m.get_baptism_status_display|default:"—" }}</td></tr>
+    <tr><th>Born again</th><td>{{ m.born_again_date|default:"—" }}</td></tr>
+    <tr><th>Foundation school</th><td>{{ m.get_foundation_school_status_display }}{% if m.foundation_school_completion_date %} ({{ m.foundation_school_completion_date }}){% endif %}</td></tr>
+    <tr><th>Date joined</th><td>{{ m.date_joined|default:"—" }}</td></tr>
+  </table>
+  {% if not m.is_active and m.inactive_reason %}
+    <p class="muted">Inactive reason: {{ m.inactive_reason }}</p>
+  {% endif %}
+</div>
+{% endblock %}

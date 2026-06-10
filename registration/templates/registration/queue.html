@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Registrations{% endblock %}
+{% block page_heading %}Pending registrations{% endblock %}
+{% block nav_registrations %}active{% endblock %}
+{% block content %}
+<div class="card">
+  {% if requests %}
+    <table class="data">
+      <tr><th>Name</th><th>Cell</th><th>Phone</th><th>Submitted</th><th></th></tr>
+      {% for r in requests %}
+      <tr>
+        <td>{{ r.member.surname }} {{ r.member.other_names }}</td>
+        <td>{{ r.cell }}</td>
+        <td>{{ r.member.phone_primary }}</td>
+        <td class="muted">{{ r.created_at|date:"j M, H:i" }}</td>
+        <td><a href="{% url 'reg_review' r.id %}">Review &rarr;</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% else %}
+    <p class="muted">No pending registrations in your area.</p>
+  {% endif %}
+</div>
+{% endblock %}

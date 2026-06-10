@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Review registration{% endblock %}
+{% block page_heading %}Review registration{% endblock %}
+{% block nav_registrations %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px;">
+  {% if req.member.official_photo_path %}
+    <img src="{{ MEDIA_URL }}{{ req.member.official_photo_path }}" alt="photo"
+         style="width:150px;height:150px;object-fit:cover;border-radius:var(--r-lg);border:1px solid var(--line);">
+  {% endif %}
+  <h2 style="margin-top:14px;">{{ req.member.surname }} {{ req.member.other_names }}</h2>
+  <p class="muted">{{ req.member.get_gender_display }} &middot; {{ req.member.phone_primary }}
+     {% if req.member.email %}&middot; {{ req.member.email }}{% endif %}</p>
+  <p class="muted">Cell: {{ req.cell }} &middot; Church: {{ req.church }}</p>
+  <form method="post" style="margin-top:18px;">
+    {% csrf_token %}
+    {% for field in form %}
+      <label>{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="alert alert-error">{{ field.errors|join:", " }}</div>{% endif %}
+      {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+    {% endfor %}
+    <button type="submit" style="margin-top:14px;">Submit decision</button>
+  </form>
+  <div class="alt"><a href="{% url 'reg_queue' %}">Back to queue</a></div>
+</div>
+{% endblock %}

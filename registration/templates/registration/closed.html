@@ -1,0 +1,8 @@
+{% extends "base_auth.html" %}
+{% block title %}Registration closed{% endblock %}
+{% block content %}
+<h1 class="page-title">Registration is closed</h1>
+<p class="muted">Self-registration is not open at the moment. Please contact your
+cell or fellowship leader, who can register you directly.</p>
+<div class="alt"><a href="{% url 'login_email' %}">Back to sign in</a></div>
+{% endblock %}

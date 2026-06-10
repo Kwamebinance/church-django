@@ -1,0 +1,83 @@
+{% extends "base_auth.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<h1 class="page-title">Register</h1>
+<p class="muted">Fill in your details and choose your church, fellowship, and cell.
+Your cell leader will confirm your registration.</p>
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <label>Surname</label>{{ form.surname }}
+  {% if form.surname.errors %}<div class="alert alert-error">{{ form.surname.errors|join:", " }}</div>{% endif %}
+
+  <label>Other names</label>{{ form.other_names }}
+  {% if form.other_names.errors %}<div class="alert alert-error">{{ form.other_names.errors|join:", " }}</div>{% endif %}
+
+  <label>Gender</label>{{ form.gender }}
+  <label>Date of birth</label>{{ form.date_of_birth }}
+  <label>Marital status</label>{{ form.marital_status }}
+
+  <label>Phone number</label>{{ form.phone_primary }}
+  {% if form.phone_primary.errors %}<div class="alert alert-error">{{ form.phone_primary.errors|join:", " }}</div>{% endif %}
+
+  <label>Email (optional)</label>{{ form.email }}
+
+  <label>Church</label>
+  <select name="church" id="id_church" required>
+    <option value="">&mdash; select church &mdash;</option>
+    {% for c in form.church.field.queryset %}<option value="{{ c.id }}">{{ c }}</option>{% endfor %}
+  </select>
+  {% if form.church.errors %}<div class="alert alert-error">{{ form.church.errors|join:", " }}</div>{% endif %}
+
+  <label>Fellowship</label>
+  <select name="fellowship" id="id_fellowship" required disabled>
+    <option value="">&mdash; select church first &mdash;</option>
+  </select>
+  {% if form.fellowship.errors %}<div class="alert alert-error">{{ form.fellowship.errors|join:", " }}</div>{% endif %}
+
+  <label>Cell</label>
+  <select name="cell" id="id_cell" required disabled>
+    <option value="">&mdash; select fellowship first &mdash;</option>
+  </select>
+  {% if form.cell.errors %}<div class="alert alert-error">{{ form.cell.errors|join:", " }}</div>{% endif %}
+
+  <label>Your photo (clear, front-facing)</label>{{ form.photo }}
+  {% if form.photo.errors %}<div class="alert alert-error">{{ form.photo.errors|join:", " }}</div>{% endif %}
+
+  <label>Password</label>{{ form.password }}
+  {% if form.password.errors %}<div class="alert alert-error">{{ form.password.errors|join:", " }}</div>{% endif %}
+  <label>Confirm password</label>{{ form.password_confirm }}
+  {% if form.password_confirm.errors %}<div class="alert alert-error">{{ form.password_confirm.errors|join:", " }}</div>{% endif %}
+
+  <button type="submit" style="width:100%;margin-top:18px;">Submit registration</button>
+</form>
+<div class="alt"><a href="{% url 'login_email' %}">Already have an account? Sign in</a></div>
+
+<script>
+(function () {
+  var church = document.getElementById('id_church');
+  var fellowship = document.getElementById('id_fellowship');
+  var cell = document.getElementById('id_cell');
+  function fill(select, rows, placeholder) {
+    select.innerHTML = '';
+    var o0 = document.createElement('option'); o0.value=''; o0.textContent=placeholder; select.appendChild(o0);
+    rows.forEach(function (r) { var o=document.createElement('option'); o.value=r.id; o.textContent=r.name; select.appendChild(o); });
+  }
+  church.addEventListener('change', function () {
+    cell.disabled = true; fill(cell, [], '\u2014 select fellowship first \u2014');
+    if (!church.value) { fellowship.disabled = true; fill(fellowship, [], '\u2014 select church first \u2014'); return; }
+    fetch('{% url "api_fellowships" %}?church=' + encodeURIComponent(church.value))
+      .then(function (r){return r.json();})
+      .then(function (d){ fill(fellowship, d.results, '\u2014 select fellowship \u2014'); fellowship.disabled=false; });
+  });
+  fellowship.addEventListener('change', function () {
+    if (!fellowship.value) { cell.disabled = true; fill(cell, [], '\u2014 select fellowship first \u2014'); return; }
+    fetch('{% url "api_cells" %}?fellowship=' + encodeURIComponent(fellowship.value))
+      .then(function (r){return r.json();})
+      .then(function (d){ fill(cell, d.results, '\u2014 select cell \u2014'); cell.disabled=false; });
+  });
+})();
+</script>
+{% endblock %}
