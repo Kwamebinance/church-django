@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ t.title }}{% endblock %}
+{% block page_heading %}{{ t.title }}{% endblock %}
+{% block nav_templates %}active{% endblock %}
+{% block topbar_actions %}<a class="btn" href="{% url 'template_edit' t.id %}">Edit</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <table class="data">
+    <tr><th>Pattern</th><td>{{ t.get_recurrence_type_display }}</td></tr>
+    <tr><th>Level</th><td>{{ t.get_unit_type_display }} — {{ t.scope_label }}</td></tr>
+    <tr><th>Time</th><td>{{ t.event_time|time:"H:i" }}{% if t.duration_minutes %} ({{ t.duration_minutes }} min){% endif %}</td></tr>
+    {% if t.default_location %}<tr><th>Location</th><td>{{ t.default_location }}</td></tr>{% endif %}
+    <tr><th>Active</th><td>{{ t.active_from }}{% if t.active_until %} – {{ t.active_until }}{% else %} onwards{% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Generate events</h2>
+  <p class="muted">Materialize the upcoming occurrences as real events you can take attendance against. Safe to run repeatedly — it never duplicates.</p>
+  <form method="post" action="{% url 'template_generate' t.id %}" style="display:flex;gap:8px;align-items:end;max-width:340px;">
+    {% csrf_token %}
+    <div style="flex:1;"><label>Weeks ahead</label><input type="number" name="weeks" value="8" min="1" max="52"></div>
+    <button type="submit" class="btn-accent">Generate</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Upcoming generated events</h2>
+  {% if upcoming %}
+  <table class="data">
+    <tr><th>Date</th><th>Time</th><th>Status</th></tr>
+    {% for e in upcoming %}
+    <tr>
+      <td><a href="{% url 'event_detail' e.id %}">{{ e.event_date|date:"D, j M Y" }}</a></td>
+      <td>{{ e.event_time|time:"H:i" }}</td>
+      <td>{% if e.status == 'cancelled' %}<span class="badge badge-danger">Cancelled</span>{% else %}<span class="badge badge-ok">{{ e.get_status_display }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No upcoming events generated yet. Use “Generate” above.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Exceptions (skipped dates)</h2>
+  <p class="muted">Dates this pattern should NOT generate — holidays, cancellations.</p>
+  <form method="post" action="{% url 'template_add_exception' t.id %}" style="display:flex;gap:8px;align-items:end;max-width:480px;">
+    {% csrf_token %}
+    <div><label>Date</label>{{ exc_form.exception_date }}</div>
+    <div style="flex:1;"><label>Reason</label>{{ exc_form.reason }}</div>
+    <button type="submit" class="btn-ghost">Add</button>
+  </form>
+  {% if exceptions %}
+  <table class="data" style="margin-top:14px;">
+    <tr><th>Date</th><th>Reason</th><th></th></tr>
+    {% for x in exceptions %}
+    <tr>
+      <td>{{ x.exception_date|date:"j M Y" }}</td>
+      <td>{{ x.reason|default:"—" }}</td>
+      <td><form method="post" action="{% url 'template_remove_exception' t.id x.id %}">{% csrf_token %}<button type="submit" class="btn-ghost">Remove</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

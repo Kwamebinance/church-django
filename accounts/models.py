@@ -201,23 +201,63 @@ def current_member_id(profile):
 
 def reach_church_ids(profile):
     """
-    Church ids the user may act across.
-      - super_admin -> None  (caller treats None as 'all active churches')
-      - others -> a concrete set.
-
-    The full pastor/leader derivation (member_roles scope walked up the unit
-    tree) is built in the access phase. Interim: super_admin = all; everyone
-    else = their own church.
+    The set of church ids the user may act across (Layer 1, church-granularity).
+    Mirrors the live current_reach_churches():
+      1. super_admin -> None  (caller treats None as 'all active churches')
+      2. member with scoped roles -> reach_churches(member): resolve each role
+         scope to churches (church scope -> that church; group scope -> churches
+         under the group; zone scope -> churches under the zone's groups)
+      3. fallback -> the profile's home church_id
     """
     if profile is None:
         return set()
     if profile.access_level == AccessLevel.SUPER_ADMIN:
         return None  # unrestricted
+
+    member_id = profile.member_id
+    if member_id:
+        churches = _reach_churches_for_member(member_id)
+        if churches:  # only use role-derived reach if the member actually has roles
+            return churches
+
+    # fallback: home church from the profile
     if profile.church_id:
         return {profile.church_id}
-    if profile.member_id and profile.member and profile.member.church_id:
-        return {profile.member.church_id}
     return set()
+
+
+def _reach_churches_for_member(member_id):
+    """Resolve a member's role SCOPES to a set of church ids.
+    Mirrors the live reach_churches(p_member_id) SQL: a union over
+    church / group / zone scoped roles. Returns a set (empty if no roles)."""
+    # Imported here to avoid circular imports at module load.
+    from access.models import MemberRole
+    from org.models import Church, EcclesiasticalUnit
+
+    roles = list(MemberRole.objects.filter(member_id=member_id)
+                 .values("scope_type", "scope_id"))
+    if not roles:
+        return set()
+
+    church_ids = set()
+    for r in roles:
+        st, sid = r["scope_type"], r["scope_id"]
+        if st == "church":
+            # scope_id IS the church id
+            church_ids.add(sid)
+        elif st == "group":
+            # churches directly under the group unit
+            church_ids.update(
+                Church.objects.filter(parent_unit_id=sid).values_list("id", flat=True))
+        elif st == "zone":
+            # churches under any group whose parent is the zone
+            group_ids = list(EcclesiasticalUnit.objects.filter(
+                parent_unit_id=sid, unit_type="group").values_list("id", flat=True))
+            if group_ids:
+                church_ids.update(
+                    Church.objects.filter(parent_unit_id__in=group_ids)
+                    .values_list("id", flat=True))
+    return church_ids
 
 
 def member_in_reach(profile, member_id):

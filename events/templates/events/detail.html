@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ e.display_title }}{% endblock %}
+{% block page_heading %}{{ e.display_title }}{% endblock %}
+{% block nav_events %}active{% endblock %}
+{% block topbar_actions %}
+  <a class="btn" href="{% url 'event_edit' e.id %}">Edit</a>
+  {% if e.status != 'cancelled' %}<a class="btn-ghost" href="{% url 'event_cancel' e.id %}">Cancel event</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0;">{{ e.display_title }}
+    {% if e.status == 'scheduled' %}<span class="badge badge-ok">Scheduled</span>
+    {% elif e.status == 'in_progress' %}<span class="badge badge-warn">In progress</span>
+    {% elif e.status == 'completed' %}<span class="badge">Completed</span>
+    {% else %}<span class="badge badge-danger">Cancelled</span>{% endif %}
+  </h2>
+  <table class="data">
+    <tr><th>When</th><td>{{ e.event_date|date:"l, j F Y" }}{% if e.event_time %} at {{ e.event_time|time:"H:i" }}{% endif %}{% if e.duration_minutes %} ({{ e.duration_minutes }} min){% endif %}</td></tr>
+    <tr><th>Level</th><td>{{ e.get_unit_type_display }}</td></tr>
+    <tr><th>Scope</th><td>{{ e.scope_label }}</td></tr>
+    <tr><th>Location</th><td>{{ e.location|default:"—" }}</td></tr>
+    {% if e.expected_attendee_count %}<tr><th>Expected</th><td>{{ e.expected_attendee_count }}</td></tr>{% endif %}
+    {% if e.description %}<tr><th>Description</th><td>{{ e.description }}</td></tr>{% endif %}
+    {% if e.status == 'cancelled' and e.cancellation_reason %}<tr><th>Cancelled because</th><td>{{ e.cancellation_reason }}</td></tr>{% endif %}
+  </table>
+</div>
+<div class="card">
+  <h2>Attendance</h2>
+  <p class="muted">Attendance recording will be built in the next slice. This event
+  is ready to attach a register to once that's in place.</p>
+</div>
+{% endblock %}

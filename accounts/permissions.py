@@ -36,7 +36,7 @@ def can_access(profile, min_level):
 
 
 def scope_filter(qs, profile, church_field="church_id"):
-    """Apply reach scoping to a queryset in ONE place.
+    """Apply reach scoping to a queryset in ONE place (Layer 1, church-level).
 
     super_admin (reach is None) -> unrestricted (returns qs unchanged).
     Everyone else -> filtered to their reach churches.
@@ -46,6 +46,61 @@ def scope_filter(qs, profile, church_field="church_id"):
     if reach is None:  # super_admin = all
         return qs
     return qs.filter(**{f"{church_field}__in": reach})
+
+
+# ---- Layer 2: assignments-based sub-church narrowing -----------------------
+def led_units(profile):
+    """The units a member ACTIVELY LEADS (via assignments to a leader role).
+
+    Returns a dict of sets: {'cell': {...}, 'fellowship': {...}, 'department': {...}}.
+    'Active' = assignment.end_date is null AND the role.is_leader is true.
+    Mirrors the can_review_change_request / announcement logic which keys off
+    active leader-role assignments to a unit. super_admin / high access levels
+    are NOT narrowed (they use Layer 1 reach only) -- callers decide whether to
+    apply narrowing based on access level.
+    """
+    empty = {"cell": set(), "fellowship": set(), "department": set()}
+    if profile is None or not profile.member_id:
+        return empty
+    from access.models import Assignment
+    rows = (Assignment.objects
+            .filter(member_id=profile.member_id, end_date__isnull=True, role__is_leader=True)
+            .values("cell_id", "fellowship_id", "department_id"))
+    out = {"cell": set(), "fellowship": set(), "department": set()}
+    for r in rows:
+        if r["cell_id"]:
+            out["cell"].add(r["cell_id"])
+        if r["fellowship_id"]:
+            out["fellowship"].add(r["fellowship_id"])
+        if r["department_id"]:
+            out["department"].add(r["department_id"])
+    return out
+
+
+def leads_any_unit(profile):
+    u = led_units(profile)
+    return bool(u["cell"] or u["fellowship"] or u["department"])
+
+
+def narrow_members_to_led_units(qs, profile):
+    """Narrow a Member queryset to the units this leader actually leads.
+
+    Applied for unit_leader-level users who lead specific cells/fellowships:
+    they should see members of THEIR units, not the whole church. Higher access
+    (admin+) and super_admin are not narrowed here -- they keep full church/reach
+    visibility. If a unit_leader leads nothing, they see only themselves.
+    """
+    from django.db.models import Q
+    u = led_units(profile)
+    cond = Q(pk__in=[])
+    if u["cell"]:
+        cond |= Q(cell_id__in=u["cell"])
+    if u["fellowship"]:
+        cond |= Q(cell__fellowship_id__in=u["fellowship"])
+    # always allow seeing self
+    if profile and profile.member_id:
+        cond |= Q(id=profile.member_id)
+    return qs.filter(cond)
 
 
 # ---- view guards -----------------------------------------------------------

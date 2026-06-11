@@ -20,6 +20,10 @@
         <a class="nav-link {% block nav_members %}{% endblock %}" href="{% url 'member_list' %}">Members</a>
         <a class="nav-link {% block nav_registrations %}{% endblock %}" href="{% url 'reg_queue' %}">Registrations</a>
 
+        <div class="nav-section">Gatherings</div>
+        <a class="nav-link {% block nav_events %}{% endblock %}" href="{% url 'event_calendar' %}">Calendar</a>
+        <a class="nav-link {% block nav_templates %}{% endblock %}" href="{% url 'template_list' %}">Recurring</a>
+
         <div class="nav-section">Admin</div>
         <a class="nav-link" href="/admin/">Django admin</a>
       </nav>
@@ -35,6 +39,11 @@
         {% block topbar_actions %}{% endblock %}
       </div>
       <div class="page">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-ok{% else %}alert-info{% endif %}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
         {% block content %}{% endblock %}
       </div>
     </div>

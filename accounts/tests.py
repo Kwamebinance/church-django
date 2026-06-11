@@ -32,15 +32,26 @@ class AutoProfileTests(TestCase):
 
 
 class AccessRankTests(TestCase):
-    def test_ordering_matches_real_enum(self):
-        # church_pastor sorts ABOVE super_admin (the real pg_enum surprise).
+    def test_ordering_matches_live_ranking(self):
+        # Live ladder: zonal > group > church_pastor > admin > ... ; super_admin
+        # passes everything. (Corrected from an earlier version that wrongly put
+        # church_pastor above super_admin per the enum sort order.)
+        zonal = Profile(access_level=AccessLevel.ZONAL_PASTOR)
         cp = Profile(access_level=AccessLevel.CHURCH_PASTOR)
         sa = Profile(access_level=AccessLevel.SUPER_ADMIN)
         member = Profile(access_level=AccessLevel.MEMBER)
-        self.assertTrue(has_at_least(cp, AccessLevel.SUPER_ADMIN))
-        self.assertTrue(has_at_least(sa, AccessLevel.ADMIN))
+        # super_admin passes everything, including the pastor tiers
+        self.assertTrue(has_at_least(sa, AccessLevel.ZONAL_PASTOR))
+        # zonal is the top non-super tier
+        self.assertTrue(has_at_least(zonal, AccessLevel.GROUP_PASTOR))
+        self.assertTrue(has_at_least(zonal, AccessLevel.CHURCH_PASTOR))
+        # church_pastor is above admin but below group/zonal, and NOT >= super_admin
+        self.assertTrue(has_at_least(cp, AccessLevel.ADMIN))
+        self.assertFalse(has_at_least(cp, AccessLevel.GROUP_PASTOR))
+        self.assertFalse(has_at_least(cp, AccessLevel.SUPER_ADMIN))
+        # member is the floor
         self.assertFalse(has_at_least(member, AccessLevel.COUNTER))
-        self.assertFalse(has_at_least(None, AccessLevel.MEMBER))  # no profile = nothing
+        self.assertFalse(has_at_least(None, AccessLevel.MEMBER))
 
 
 class ReachTests(TestCase):
@@ -71,6 +82,11 @@ class SuperAdminReachTests(TestCase):
         "reg_queue",
         "member_list",
         "member_create",
+        "event_list",
+        "event_calendar",
+        "event_create",
+        "template_list",
+        "template_create",
     ]
 
     def setUp(self):

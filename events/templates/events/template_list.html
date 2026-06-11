@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Recurring templates{% endblock %}
+{% block page_heading %}Recurring events{% endblock %}
+{% block nav_templates %}active{% endblock %}
+{% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'event_calendar' %}">Calendar</a>
+  <a class="btn btn-accent" href="{% url 'template_create' %}">+ New template</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <p class="muted" style="margin-top:0;">Recurring patterns that generate events automatically (e.g. weekly Sunday service).</p>
+  {% if templates %}
+  <table class="data">
+    <tr><th>Title</th><th>Pattern</th><th>Time</th><th>Level</th><th>Active</th></tr>
+    {% for t in templates %}
+    <tr>
+      <td><a href="{% url 'template_detail' t.id %}">{{ t.title }}</a><br><span class="muted">{{ t.scope_label }}</span></td>
+      <td>{{ t.get_recurrence_type_display }}</td>
+      <td>{{ t.event_time|time:"H:i" }}</td>
+      <td>{{ t.get_unit_type_display }}</td>
+      <td class="muted">{{ t.active_from }}{% if t.active_until %} – {{ t.active_until }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No templates yet. <a href="{% url 'template_create' %}">Create one</a> to auto-generate recurring services.</p>
+  {% endif %}
+</div>
+{% endblock %}

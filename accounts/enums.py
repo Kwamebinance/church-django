@@ -4,12 +4,13 @@ exported on 2026-06-10. Values match the database labels exactly so migrated dat
 maps cleanly. Do NOT rename values without a data migration.
 
 Access-level ordering note:
-    The access_level enum does NOT sort as a clean 1..9 sequence. Its real
-    pg_enum sort order is:
-        member(1) counter(2) unit_leader(3) treasurer(4) admin(5)
-        group_pastor(5.5) zonal_pastor(5.75) super_admin(6) church_pastor(7)
-    so church_pastor sorts HIGHEST (above super_admin) and the pastor tiers are
-    wedged between admin and super_admin. ACCESS_RANK below encodes this exactly.
+    Authority ranking follows the LIVE has_access_at_least() function, NOT the
+    pg_enum sort order. The real ladder (highest to lowest) is:
+        zonal_pastor > group_pastor > church_pastor > admin > treasurer
+        > unit_leader > counter > member
+    with super_admin as an always-passes override above all. ACCESS_RANK below
+    encodes this. (An earlier version mistakenly used the enum sort order, which
+    put church_pastor above super_admin -- corrected in the scope-walk slice.)
     All "has at least" comparisons must use ACCESS_RANK, never list position.
 """
 from django.db import models
@@ -27,18 +28,21 @@ class AccessLevel(models.TextChoices):
     CHURCH_PASTOR = "church_pastor", "Church pastor"
 
 
-# Numeric rank from the real pg_enum sort order. Used by has_at_least().
-# Higher number = more authority.
+# Numeric rank matching the LIVE has_access_at_least() ladder exactly.
+# super_admin is handled as an always-passes override in has_at_least(), but we
+# also give it the top numeric value so direct rank comparisons behave.
+# Live ladder: zonal_pastor=8, group_pastor=7, church_pastor=6, admin=5,
+#              treasurer=4, unit_leader=3, counter=2, member=1.
 ACCESS_RANK = {
-    AccessLevel.MEMBER: 1.0,
-    AccessLevel.COUNTER: 2.0,
-    AccessLevel.UNIT_LEADER: 3.0,
-    AccessLevel.TREASURER: 4.0,
-    AccessLevel.ADMIN: 5.0,
-    AccessLevel.GROUP_PASTOR: 5.5,
-    AccessLevel.ZONAL_PASTOR: 5.75,
-    AccessLevel.SUPER_ADMIN: 6.0,
-    AccessLevel.CHURCH_PASTOR: 7.0,
+    AccessLevel.MEMBER: 1,
+    AccessLevel.COUNTER: 2,
+    AccessLevel.UNIT_LEADER: 3,
+    AccessLevel.TREASURER: 4,
+    AccessLevel.ADMIN: 5,
+    AccessLevel.CHURCH_PASTOR: 6,
+    AccessLevel.GROUP_PASTOR: 7,
+    AccessLevel.ZONAL_PASTOR: 8,
+    AccessLevel.SUPER_ADMIN: 99,
 }
 
 

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Cancel event{% endblock %}
+{% block page_heading %}Cancel event{% endblock %}
+{% block nav_events %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;">
+  <h2>Cancel "{{ e.display_title }}"?</h2>
+  <p class="muted">This marks the event cancelled (it stays on record). It does not delete it.</p>
+  <form method="post">
+    {% csrf_token %}
+    <label>Reason (optional)</label>
+    <input type="text" name="reason" placeholder="e.g. venue unavailable">
+    <button type="submit" class="btn-danger" style="margin-top:14px;">Cancel this event</button>
+    <a class="btn-ghost" href="{% url 'event_detail' e.id %}" style="margin-left:8px;">Keep it</a>
+  </form>
+</div>
+{% endblock %}

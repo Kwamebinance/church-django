@@ -44,7 +44,14 @@ def member_list(request):
     form = MemberFilterForm(request.GET or None)
 
     qs = Member.objects.select_related("church", "cell").order_by("surname", "other_names")
-    qs = scope_filter(qs, profile)  # reach scoping in one place
+    qs = scope_filter(qs, profile)  # Layer 1: reach scoping (church-level)
+
+    # Layer 2: a plain unit_leader (below admin) sees only members of the units
+    # they actively lead, not the whole church. admin+ keep full church reach.
+    from accounts.permissions import has_at_least, narrow_members_to_led_units
+    from accounts.enums import AccessLevel as _AL
+    if not has_at_least(profile, _AL.ADMIN):
+        qs = narrow_members_to_led_units(qs, profile)
 
     if form.is_valid():
         q = form.cleaned_data.get("q")

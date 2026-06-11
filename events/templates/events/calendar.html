@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Calendar{% endblock %}
+{% block page_heading %}Calendar{% endblock %}
+{% block nav_events %}active{% endblock %}
+{% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'event_list' %}">List view</a>
+  <a class="btn btn-accent" href="{% url 'event_create' %}">+ New event</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="cal-head">
+    <a class="btn-ghost" href="?year={{ prev.year }}&month={{ prev.month }}">&larr;</a>
+    <h2 style="margin:0;">{{ month_name }} {{ year }}</h2>
+    <a class="btn-ghost" href="?year={{ next.year }}&month={{ next.month }}">&rarr;</a>
+    <a class="btn-ghost" href="{% url 'event_calendar' %}" style="margin-left:auto;">Today</a>
+  </div>
+
+  <div class="cal-grid">
+    {% for h in weekday_headers %}<div class="cal-dow">{{ h }}</div>{% endfor %}
+    {% for week in weeks %}
+      {% for cell in week %}
+        <div class="cal-cell{% if not cell.in_month %} cal-empty{% endif %}{% if cell.is_today %} cal-today{% endif %}">
+          {% if cell.in_month %}
+            <div class="cal-daynum">{{ cell.day }}</div>
+            {% for e in cell.events %}
+              <a class="cal-event lvl-{{ e.unit_type }}{% if e.status == 'cancelled' %} cal-cancelled{% endif %}"
+                 href="{% url 'event_detail' e.id %}"
+                 title="{{ e.display_title }} — {{ e.scope_label }}{% if e.event_time %} at {{ e.event_time|time:'H:i' }}{% endif %}">
+                {% if e.event_time %}<span class="cal-time">{{ e.event_time|time:"H:i" }}</span> {% endif %}{{ e.display_title }}
+              </a>
+            {% endfor %}
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="cal-legend">
+    <span><i class="dot cal-church-dot"></i> Church-wide</span>
+    <span><i class="dot cal-department-dot"></i> Department</span>
+    <span><i class="dot cal-fellowship-dot"></i> Fellowship</span>
+    <span><i class="dot cal-cell-dot"></i> Cell</span>
+  </div>
+</div>
+{% endblock %}

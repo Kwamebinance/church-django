@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{% if mode == 'create' %}New template{% else %}Edit template{% endif %}{% endblock %}
+{% block page_heading %}{% if mode == 'create' %}New recurring event{% else %}Edit {{ t.title }}{% endif %}{% endblock %}
+{% block nav_templates %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:720px;">
+  <p class="muted">Define the pattern. <strong>Weekly</strong>: pick a day of week. <strong>Monthly</strong>: either a day-of-month (e.g. 15) or a week position + day (e.g. Third + Sunday).</p>
+  {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors|join:", " }}</div>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      <div {% if field.name in 'title,description,default_location' %}{% else %}style="display:inline-block;width:48%;margin-right:1%;vertical-align:top;"{% endif %}>
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="alert alert-error">{{ field.errors|join:", " }}</div>{% endif %}
+        {% if field.help_text %}<p class="muted" style="font-size:12px;">{{ field.help_text }}</p>{% endif %}
+      </div>
+    {% endfor %}
+    <div style="margin-top:18px;">
+      <button type="submit">{% if mode == 'create' %}Create template{% else %}Save changes{% endif %}</button>
+      {% if mode == 'edit' %}<a class="btn-ghost" href="{% url 'template_detail' t.id %}" style="margin-left:8px;">Cancel</a>
+      {% else %}<a class="btn-ghost" href="{% url 'template_list' %}" style="margin-left:8px;">Cancel</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}
