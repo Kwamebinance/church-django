@@ -10,7 +10,6 @@ class EventForm(forms.ModelForm):
             "title", "description",
             "unit_type", "church", "department", "fellowship", "cell",
             "event_date", "event_time", "duration_minutes", "location",
-            "expected_attendee_count",
         ]
         widgets = {
             "event_date": forms.DateInput(attrs={"type": "date"}),

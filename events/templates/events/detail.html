@@ -26,7 +26,7 @@
 </div>
 <div class="card">
   <h2>Attendance</h2>
-  <p class="muted">Attendance recording will be built in the next slice. This event
-  is ready to attach a register to once that's in place.</p>
+  <p class="muted">Record who attended this event — mark members present/absent and/or enter head counts.</p>
+  <a class="btn btn-accent" href="{% url 'attendance_register' e.id %}">Take attendance</a>
 </div>
 {% endblock %}

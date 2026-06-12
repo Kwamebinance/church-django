@@ -135,6 +135,9 @@ def event_create(request):
         event = form.save(commit=False)
         event.recorded_by = request.user
         event.save()
+        # Snapshot the expected-attendee list from the event's scope (fixed now).
+        from attendance.services import snapshot_expected_attendees
+        snapshot_expected_attendees(event, created_by=request.user)
         return redirect("event_detail", event_id=event.id)
     return render(request, "events/form.html", {"form": form, "mode": "create"})
 

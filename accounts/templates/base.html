@@ -28,7 +28,7 @@
         <a class="nav-link" href="/admin/">Django admin</a>
       </nav>
       <div class="nav-foot">
-        <div class="who">{{ request.user.email|default:request.user.phone }}</div>
+        <div class="who">{% if request.user.is_authenticated %}{{ request.user.email|default:request.user.phone|default:"Signed in" }}{% endif %}</div>
         {% if request.profile %}<div class="role">{{ request.profile.get_access_level_display }}</div>{% endif %}
         <div style="margin-top:8px;"><a href="{% url 'logout' %}">Log out</a></div>
       </div>

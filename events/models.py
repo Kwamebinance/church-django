@@ -95,6 +95,22 @@ class AttendanceEvent(models.Model):
     recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name="recorded_events",
                                     db_column="recorded_by")
+
+    # --- attendance REGISTER lifecycle (distinct from the event's own `status`) ---
+    # The event's status (scheduled/in_progress/completed/cancelled) describes the
+    # GATHERING. These fields describe whether ATTENDANCE RECORDING is finalized,
+    # which often happens after the event itself ends. The two are independent.
+    # NET-NEW vs the original schema (which had no separate attendance-closed state).
+    attendance_closed = models.BooleanField(default=False)
+    attendance_closed_at = models.DateTimeField(null=True, blank=True)
+    attendance_closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="closed_registers", db_column="attendance_closed_by")
+    attendance_reopened_at = models.DateTimeField(null=True, blank=True)
+    attendance_reopened_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="reopened_registers", db_column="attendance_reopened_by")
+
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -276,7 +292,7 @@ class EventTemplate(models.Model):
         for d in wanted:
             if d in existing:
                 continue
-            AttendanceEvent.objects.create(
+            ev = AttendanceEvent.objects.create(
                 template=self, church=self.church, unit_type=self.unit_type,
                 department=self.department, fellowship=self.fellowship, cell=self.cell,
                 title=self.title, description=self.description,
@@ -285,6 +301,9 @@ class EventTemplate(models.Model):
                 location=self.default_location,
                 status=EventStatus.SCHEDULED, recorded_by=created_by,
             )
+            # Snapshot this generated event's expected list from its scope.
+            from attendance.services import snapshot_expected_attendees
+            snapshot_expected_attendees(ev, created_by=created_by)
             created += 1
         return created
 
@@ -306,3 +325,5 @@ class RecurrenceException(models.Model):
 
     def __str__(self):
         return f"{self.template} skips {self.exception_date}"
+
+

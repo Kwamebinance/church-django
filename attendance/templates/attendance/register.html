@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Attendance — {{ event.display_title }}{% endblock %}
+{% block page_heading %}Attendance{% endblock %}
+{% block nav_events %}active{% endblock %}
+{% block topbar_actions %}
+  {% if is_open %}
+    <form method="post" action="{% url 'attendance_close' event.id %}" style="margin:0;">{% csrf_token %}
+      <button type="submit" class="btn-accent">Close register</button></form>
+  {% else %}
+    <form method="post" action="{% url 'attendance_reopen' event.id %}" style="margin:0;">{% csrf_token %}
+      <button type="submit" class="btn-ghost">Reopen</button></form>
+  {% endif %}
+  <a class="btn-ghost" href="{% url 'event_detail' event.id %}">Back to event</a>
+{% endblock %}
+{% block content %}
+
+{% if not is_open %}
+<div class="alert alert-info">
+  This register is <strong>closed</strong> and is read-only.
+  {% if event.status == 'cancelled' %}The event was cancelled.{% else %}
+    {% if event.attendance_closed_by %}Closed by {{ event.attendance_closed_by.email|default:event.attendance_closed_by.phone }}{% if event.attendance_closed_at %} on {{ event.attendance_closed_at|date:"j M Y, H:i" }}{% endif %}.{% endif %}
+    {% if event.attendance_reopened_by %} (Previously reopened by {{ event.attendance_reopened_by.email|default:event.attendance_reopened_by.phone }}.){% endif %}
+    An admin can reopen it to make changes.
+  {% endif %}
+</div>
+{% elif event.attendance_reopened_by %}
+<div class="alert alert-info">This register was reopened by {{ event.attendance_reopened_by.email|default:event.attendance_reopened_by.phone }}{% if event.attendance_reopened_at %} on {{ event.attendance_reopened_at|date:"j M Y, H:i" }}{% endif %} and is editable.</div>
+{% endif %}
+
+<div class="card">
+  <h2 style="margin-top:0;">{{ event.display_title }}</h2>
+  <p class="muted">{{ event.event_date|date:"l, j F Y" }}{% if event.event_time %} at {{ event.event_time|time:"H:i" }}{% endif %}
+     &middot; {{ event.get_unit_type_display }} &middot; {{ event.scope_label }}</p>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;">
+    <span class="turnout"><span class="turnout-pct">{{ summary.turnout_pct }}%</span> turnout</span>
+    <span class="muted">{{ summary.attended }} of {{ summary.expected }} expected attended</span>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+    <span class="badge badge-ok">Present: {{ summary.present }}</span>
+    <span class="badge badge-warn">Late: {{ summary.late }}</span>
+    <span class="badge">Excused: {{ summary.excused }}</span>
+    <span class="badge badge-danger">Absent: {{ summary.absent }}</span>
+    {% if summary.head_total %}<span class="badge" style="background:var(--accent-soft);color:var(--brand);">Head count: {{ summary.head_total }}</span>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <h2 style="margin:0;">Register <span class="muted" style="font-weight:400;">({{ summary.expected }} expected)</span></h2>
+    {% if is_open %}
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="rollSearch" placeholder="Search the roll…" style="width:200px;">
+      <form method="post" style="margin:0;">{% csrf_token %}
+        <input type="hidden" name="action" value="mark_all_present">
+        <button type="submit" class="btn-ghost">Mark all present</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% if is_open %}<p class="muted" style="margin-top:6px;">Unmarked members count as <strong>absent</strong>. Mark who came.</p>{% endif %}
+
+  {% if rows %}
+  {% if is_open %}
+  <form method="post">
+    {% csrf_token %}
+    <table class="data" id="rollTable">
+      <tr><th>Member</th><th>Cell</th><th style="width:320px;">Presence</th></tr>
+      {% for row in rows %}
+      <tr class="roll-row" data-name="{{ row.member.surname }} {{ row.member.other_names }}">
+        <td>{{ row.member.surname }} {{ row.member.other_names }}{% if row.is_added %} <span class="badge" style="font-size:10px;">added</span>{% endif %}</td>
+        <td class="muted">{{ row.member.cell|default:"—" }}</td>
+        <td>
+          <div class="presence-pick">
+            {% for val, label in presence_choices %}
+              <label class="pp-opt">
+                <input type="radio" name="presence_{{ row.member.id }}" value="{{ val }}" {% if row.presence == val %}checked{% endif %}>
+                <span class="pp-{{ val }}">{{ label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    <button type="submit" style="margin-top:16px;">Save attendance</button>
+  </form>
+  {% else %}
+    {# read-only view when closed #}
+    <table class="data">
+      <tr><th>Member</th><th>Cell</th><th>Presence</th></tr>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.member.surname }} {{ row.member.other_names }}{% if row.is_added %} <span class="badge" style="font-size:10px;">added</span>{% endif %}</td>
+        <td class="muted">{{ row.member.cell|default:"—" }}</td>
+        <td>
+          {% if row.presence == 'present' %}<span class="badge badge-ok">Present</span>
+          {% elif row.presence == 'late' %}<span class="badge badge-warn">Late</span>
+          {% elif row.presence == 'excused' %}<span class="badge">Excused</span>
+          {% else %}<span class="badge badge-danger">Absent</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% endif %}
+  {% else %}
+  <p class="muted">No expected attendees for this event.</p>
+  {% endif %}
+</div>
+
+{% if is_open %}
+<div class="card">
+  <h2>Add someone not on the list</h2>
+  <p class="muted">A member who came but wasn't expected (e.g. a visiting leader). They'll be added to the register.</p>
+  <div style="position:relative;max-width:420px;">
+    <input type="text" id="addSearch" placeholder="Search church members by name or code…" autocomplete="off">
+    <div id="addResults" class="add-results"></div>
+  </div>
+  <form method="post" action="{% url 'attendance_add_expected' event.id %}" id="addForm" style="display:none;">
+    {% csrf_token %}<input type="hidden" name="member_id" id="addMemberId">
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Head counts</h2>
+  {% if is_open %}
+  <p class="muted">For counting by head (e.g. large services). Multiple counters can each add a count; they're summed.</p>
+  <form method="post" action="{% url 'attendance_add_count' event.id %}" style="display:flex;gap:8px;align-items:end;max-width:520px;">
+    {% csrf_token %}
+    <div style="flex:1;"><label>Label (optional)</label><input type="text" name="label" placeholder="e.g. Main hall"></div>
+    <div style="width:120px;"><label>Count</label><input type="number" name="count" min="1" value=""></div>
+    <button type="submit" class="btn-ghost">Add</button>
+  </form>
+  {% endif %}
+  {% if counts %}
+  <table class="data" style="margin-top:14px;">
+    <tr><th>Label</th><th>Count</th><th>By</th>{% if is_open %}<th></th>{% endif %}</tr>
+    {% for c in counts %}
+    <tr>
+      <td>{{ c.label|default:"—" }}</td>
+      <td>{{ c.count }}</td>
+      <td class="muted">{% if c.counted_by %}{{ c.counted_by.email|default:c.counted_by.phone|default:"—" }}{% else %}—{% endif %}</td>
+      {% if is_open %}<td><form method="post" action="{% url 'attendance_remove_count' event.id c.id %}">{% csrf_token %}<button type="submit" class="btn-ghost">Remove</button></form></td>{% endif %}
+    </tr>
+    {% endfor %}
+    <tr><td><strong>Total</strong></td><td><strong>{{ summary.head_total }}</strong></td><td></td>{% if is_open %}<td></td>{% endif %}</tr>
+  </table>
+  {% elif not is_open %}
+  <p class="muted">No head counts were recorded.</p>
+  {% endif %}
+</div>
+
+{% if is_open %}
+<script>
+// roll search: filter visible rows
+(function(){
+  var s=document.getElementById('rollSearch');
+  if(s){ s.addEventListener('input',function(){
+    var q=s.value.toLowerCase();
+    document.querySelectorAll('.roll-row').forEach(function(r){
+      r.style.display = r.getAttribute('data-name').toLowerCase().indexOf(q)>-1 ? '' : 'none';
+    });
+  });}
+})();
+// add-not-expected: live search church members, click to add
+(function(){
+  var inp=document.getElementById('addSearch'), box=document.getElementById('addResults');
+  if(!inp) return;
+  var t;
+  inp.addEventListener('input',function(){
+    clearTimeout(t);
+    var q=inp.value;
+    t=setTimeout(function(){
+      fetch('{% url "attendance_add_expected_search" event.id %}?q='+encodeURIComponent(q))
+        .then(function(r){return r.json();})
+        .then(function(d){
+          box.innerHTML='';
+          d.results.forEach(function(m){
+            var a=document.createElement('div');
+            a.className='add-result'; a.textContent=m.name+' ('+m.code+')';
+            a.onclick=function(){ document.getElementById('addMemberId').value=m.id; document.getElementById('addForm').submit(); };
+            box.appendChild(a);
+          });
+        });
+    },200);
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}
