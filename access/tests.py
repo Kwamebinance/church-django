@@ -129,3 +129,21 @@ class Layer2NarrowingTests(TestCase):
         r = c.get("/members/")
         self.assertContains(r, "Alpha")       # cell A member visible
         self.assertNotContains(r, "Beta")     # cell B member hidden
+
+
+class AssignmentImmutabilityTests(TestCase):
+    def test_ended_assignment_cannot_be_reopened(self):
+        from datetime import date
+        from org.models import Church, Department, Fellowship, Cell
+        from access.models import Role, Assignment
+        from accounts.models import Member
+        ch = Church.objects.create(name="C", short_code="C", status="active")
+        d = Department.objects.create(church=ch, name="D", short_code="D")
+        fel = Fellowship.objects.create(church=ch, parent_department=d, name="F", short_code="F")
+        cell = Cell.objects.create(fellowship=fel, name="Cell", short_code="CE")
+        role = Role.objects.create(church=ch, name="Member", is_leader=False)
+        m = Member.objects.create(church=ch, member_code="X", surname="A", other_names="B")
+        a = Assignment.objects.create(member=m, role=role, cell=cell, end_date=date(2026,6,12))
+        a.end_date = None
+        with self.assertRaises(ValueError):
+            a.save()

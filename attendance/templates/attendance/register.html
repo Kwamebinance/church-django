@@ -1,18 +1,20 @@
 {% extends "base.html" %}
+{% load nav %}
 {% block title %}Attendance — {{ event.display_title }}{% endblock %}
 {% block page_heading %}Attendance{% endblock %}
 {% block nav_events %}active{% endblock %}
 {% block topbar_actions %}
   {% if is_open %}
+    <a class="btn-ghost" href="{% url 'attendance_scan' event.id %}">Scan QR</a>
     <form method="post" action="{% url 'attendance_close' event.id %}" style="margin:0;">{% csrf_token %}
       <button type="submit" class="btn-accent">Close register</button></form>
   {% else %}
     <form method="post" action="{% url 'attendance_reopen' event.id %}" style="margin:0;">{% csrf_token %}
       <button type="submit" class="btn-ghost">Reopen</button></form>
   {% endif %}
-  <a class="btn-ghost" href="{% url 'event_detail' event.id %}">Back to event</a>
 {% endblock %}
 {% block content %}
+{% crumbs home_url="/events/" home_label="Calendar" current_label="Register" %}
 
 {% if not is_open %}
 <div class="alert alert-info">
@@ -41,6 +43,7 @@
     <span class="badge">Excused: {{ summary.excused }}</span>
     <span class="badge badge-danger">Absent: {{ summary.absent }}</span>
     {% if summary.head_total %}<span class="badge" style="background:var(--accent-soft);color:var(--brand);">Head count: {{ summary.head_total }}</span>{% endif %}
+    {% if summary.visitors %}<span class="badge" style="background:var(--accent-soft);color:var(--brand);">Visitors: {{ summary.visitors }}</span>{% endif %}
   </div>
 </div>
 
@@ -120,6 +123,34 @@
   </form>
 </div>
 {% endif %}
+
+<div class="card">
+  <h2>Visitors / first-timers</h2>
+  {% if is_open %}
+  <p class="muted">Capture people who came but aren't members yet. They'll feed into the first-timer follow-up flow.</p>
+  <form method="post" action="{% url 'attendance_add_visitor' event.id %}" style="display:flex;gap:8px;align-items:end;max-width:560px;">
+    {% csrf_token %}
+    <div style="flex:1;"><label>Name</label><input type="text" name="name" placeholder="Full name" required></div>
+    <div style="width:180px;"><label>Phone</label><input type="text" name="phone" placeholder="Optional"></div>
+    <button type="submit" class="btn-ghost">Add visitor</button>
+  </form>
+  {% endif %}
+  {% if visitors %}
+  <table class="data" style="margin-top:14px;">
+    <tr><th>Name</th><th>Phone</th><th>Stage</th>{% if is_open %}<th></th>{% endif %}</tr>
+    {% for v in visitors %}
+    <tr>
+      <td>{{ v.name }}</td>
+      <td class="muted">{{ v.phone|default:"—" }}</td>
+      <td><span class="badge">{{ v.get_stage_display }}</span></td>
+      {% if is_open %}<td><form method="post" action="{% url 'attendance_remove_visitor' event.id v.id %}">{% csrf_token %}<button type="submit" class="btn-ghost">Remove</button></form></td>{% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  {% elif not is_open %}
+  <p class="muted">No visitors were recorded.</p>
+  {% endif %}
+</div>
 
 <div class="card">
   <h2>Head counts</h2>

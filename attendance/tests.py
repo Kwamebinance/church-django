@@ -200,3 +200,98 @@ class CloseReopenTests(TestCase):
         c.post(f"/events/{self.ev.id}/reopen/")
         c.post(f"/events/{self.ev.id}/register/", {f"presence_{self.m1.id}": "present"})
         self.assertTrue(AttendanceRecord.objects.filter(event=self.ev, member=self.m1, presence="present").exists())
+
+
+class VisitorCaptureTests(TestCase):
+    def setUp(self):
+        self.ch = Church.objects.create(name="CEG", short_code="CEG", status="active")
+        self.ev = AttendanceEvent.objects.create(church=self.ch, unit_type=UnitType.CHURCH, title="S", event_date=date(2026,6,14))
+        snapshot_expected_attendees(self.ev)
+        self.su = User.objects.create_superuser(email="su@x.com", password="pw12345678")
+
+    def test_capture_creates_visitor_at_first_timer_stage(self):
+        from attendance.models import AttendanceVisitor
+        c = Client(); c.force_login(self.su)
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "Kofi Mensah", "phone": "0244000000"})
+        v = AttendanceVisitor.objects.get(event=self.ev, name="Kofi Mensah")
+        self.assertEqual(v.phone, "0244000000")
+        self.assertEqual(v.stage, "first_timer")
+        self.assertIsNotNone(v.stage_first_timer_at)
+        self.assertTrue(v.is_first_time)
+        self.assertEqual(v.visitor_type, "first_time")
+
+    def test_name_required(self):
+        from attendance.models import AttendanceVisitor
+        c = Client(); c.force_login(self.su)
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "", "phone": "0244"})
+        self.assertEqual(AttendanceVisitor.objects.filter(event=self.ev).count(), 0)
+
+    def test_visitor_count_in_summary(self):
+        c = Client(); c.force_login(self.su)
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "Ama"})
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "Yaw"})
+        r = c.get(f"/events/{self.ev.id}/register/")
+        self.assertContains(r, "Visitors: 2")
+
+    def test_closed_register_blocks_visitor_capture(self):
+        from attendance.models import AttendanceVisitor
+        self.ev.attendance_closed = True; self.ev.save()
+        c = Client(); c.force_login(self.su)
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "Blocked"})
+        self.assertEqual(AttendanceVisitor.objects.filter(event=self.ev).count(), 0)
+
+    def test_remove_visitor(self):
+        from attendance.models import AttendanceVisitor
+        c = Client(); c.force_login(self.su)
+        c.post(f"/events/{self.ev.id}/visitor/", {"name": "Temp"})
+        v = AttendanceVisitor.objects.get(event=self.ev, name="Temp")
+        c.post(f"/events/{self.ev.id}/visitor/{v.id}/remove/")
+        self.assertEqual(AttendanceVisitor.objects.filter(event=self.ev).count(), 0)
+
+
+class ScanMarkByCodeTests(TestCase):
+    def setUp(self):
+        self.ch = Church.objects.create(name="CEG", short_code="CEG", status="active")
+        self.m = Member.objects.create(church=self.ch, member_code="CEG-2026-00411",
+                                       surname="Addo", other_names="Obi", is_active=True)
+        self.ev = AttendanceEvent.objects.create(church=self.ch, unit_type=UnitType.CHURCH,
+                                                 title="S", event_date=date(2026,6,14))
+        snapshot_expected_attendees(self.ev)
+        self.su = User.objects.create_superuser(email="su@x.com", password="pw12345678")
+
+    def test_mark_by_code_marks_present(self):
+        c = Client(); c.force_login(self.su)
+        r = c.post(f"/events/{self.ev.id}/mark-by-code/", {"code": "CEG-2026-00411"})
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()["ok"])
+        self.assertTrue(AttendanceRecord.objects.filter(event=self.ev, member=self.m, presence="present").exists())
+
+    def test_unknown_code_404(self):
+        c = Client(); c.force_login(self.su)
+        r = c.post(f"/events/{self.ev.id}/mark-by-code/", {"code": "NOPE-123"})
+        self.assertEqual(r.status_code, 404)
+        self.assertFalse(r.json()["ok"])
+
+    def test_code_marks_and_adds_unexpected_member(self):
+        # a member not in the snapshot (created after) should be added + marked
+        m2 = Member.objects.create(church=self.ch, member_code="CEG-2026-00999",
+                                   surname="New", other_names="Comer", is_active=True)
+        c = Client(); c.force_login(self.su)
+        r = c.post(f"/events/{self.ev.id}/mark-by-code/", {"code": "CEG-2026-00999"})
+        self.assertTrue(r.json()["ok"])
+        from attendance.models import EventExpectedAttendee
+        self.assertTrue(EventExpectedAttendee.objects.filter(event=self.ev, member=m2, is_added=True).exists())
+        self.assertTrue(AttendanceRecord.objects.filter(event=self.ev, member=m2, presence="present").exists())
+
+    def test_closed_register_rejects_code(self):
+        self.ev.attendance_closed = True; self.ev.save()
+        c = Client(); c.force_login(self.su)
+        r = c.post(f"/events/{self.ev.id}/mark-by-code/", {"code": "CEG-2026-00411"})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(AttendanceRecord.objects.filter(event=self.ev, member=self.m).exists())
+
+    def test_scan_page_loads(self):
+        c = Client(); c.force_login(self.su)
+        r = c.get(f"/events/{self.ev.id}/scan/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Manual entry")

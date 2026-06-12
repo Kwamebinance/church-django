@@ -109,3 +109,102 @@ class SuperAdminReachTests(TestCase):
                     f"with status {resp.status_code} -- the super_admin access "
                     f"bug has regressed. Fix via the central permission layer.",
             )
+
+
+class NavigationTrailTests(TestCase):
+    """The stateless breadcrumb trail (accounts/navigation.py)."""
+    def setUp(self):
+        from django.test import RequestFactory
+        self.rf = RequestFactory()
+
+    def _req(self, path="/x/", trail_token=None):
+        url = path
+        if trail_token is not None:
+            from urllib.parse import urlencode
+            url = f"{path}?{urlencode({'trail': trail_token})}"
+        return self.rf.get(url)
+
+    def test_encode_decode_roundtrip(self):
+        from accounts.navigation import encode_trail, decode_trail
+        trail = [{"url": "/finance/", "label": "Finance"}, {"url": "/finance/giving/1/", "label": "Giving"}]
+        token = encode_trail(trail)
+        req = self._req(trail_token=token)
+        out = decode_trail(req)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0]["label"], "Finance")
+        self.assertEqual(out[1]["url"], "/finance/giving/1/")
+
+    def test_append_dedup_truncates_to_ancestor(self):
+        from accounts.navigation import append_to_trail
+        t = [{"url": "/finance/", "label": "Finance"}, {"url": "/finance/giving/1/", "label": "Giving"}]
+        # navigating back up to /finance/ collapses the trail to just that
+        t2 = append_to_trail(t, "/finance/", "Finance")
+        self.assertEqual(len(t2), 1)
+        self.assertEqual(t2[0]["url"], "/finance/")
+
+    def test_append_caps_depth(self):
+        from accounts.navigation import append_to_trail, MAX_TRAIL
+        t = []
+        for i in range(MAX_TRAIL + 3):
+            t = append_to_trail(t, f"/p{i}/", f"P{i}")
+        self.assertLessEqual(len(t), MAX_TRAIL)
+
+    def test_unsafe_url_rejected(self):
+        from accounts.navigation import safe_internal_path
+        req = self._req()
+        self.assertIsNone(safe_internal_path(req, "https://evil.com/"))
+        self.assertIsNone(safe_internal_path(req, "//evil.com/"))
+        self.assertEqual(safe_internal_path(req, "/members/"), "/members/")
+
+    def test_decode_ignores_unsafe_entries(self):
+        from accounts.navigation import encode_trail, decode_trail
+        # a trail containing an external url should be dropped on decode
+        token = encode_trail([{"url": "https://evil.com", "label": "Bad"},
+                              {"url": "/ok/", "label": "OK"}])
+        out = decode_trail(self._req(trail_token=token))
+        self.assertEqual([h["url"] for h in out], ["/ok/"])
+
+    def test_back_target_fallback(self):
+        from accounts.navigation import back_target, encode_trail
+        # no trail -> fallback
+        self.assertEqual(back_target(self._req(), "/members/"), "/members/")
+        # with trail -> last hop
+        token = encode_trail([{"url": "/finance/", "label": "Finance"}])
+        self.assertEqual(back_target(self._req(trail_token=token), "/members/"), "/finance/")
+
+    def test_garbage_trail_safe(self):
+        from accounts.navigation import decode_trail
+        out = decode_trail(self._req(trail_token="!!!not-valid-base64!!!"))
+        self.assertEqual(out, [])
+
+
+class CrumbDedupeTests(TestCase):
+    """The crumbs tag must not duplicate the home crumb."""
+    def setUp(self):
+        from django.test import RequestFactory
+        self.rf = RequestFactory()
+
+    def _render_crumbs(self, path, home_url, home_label, current):
+        from django.template import Template, Context
+        req = self.rf.get(path)
+        t = Template("{% load nav %}{% crumbs home_url=h home_label=hl current_label=c %}")
+        return t.render(Context({"request": req, "h": home_url, "hl": home_label, "c": current}))
+
+    def test_home_not_duplicated_when_trail_contains_home(self):
+        from accounts.navigation import encode_trail
+        # trail accidentally contains /members/ (the home)
+        token = encode_trail([{"url": "/members/", "label": "Members"}])
+        html = self._render_crumbs(f"/members/x/?trail={token}", "/members/", "Members", "Ama")
+        # "Members" should appear exactly once
+        self.assertEqual(html.count(">Members<"), 1)
+        self.assertIn(">Ama<", html)
+
+    def test_cross_module_trail_intact(self):
+        from accounts.navigation import encode_trail
+        token = encode_trail([{"url": "/finance/", "label": "Finance"},
+                              {"url": "/finance/giving/1/", "label": "Giving"}])
+        html = self._render_crumbs(f"/members/x/?trail={token}", "/members/", "Members", "Ama")
+        self.assertIn(">Members<", html)
+        self.assertIn(">Finance<", html)
+        self.assertIn(">Giving<", html)
+        self.assertEqual(html.count(">Members<"), 1)

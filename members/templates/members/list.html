@@ -1,51 +1,87 @@
 {% extends "base.html" %}
+{% load member_extras nav %}
 {% block title %}Members{% endblock %}
 {% block page_heading %}Members{% endblock %}
 {% block nav_members %}active{% endblock %}
-{% block topbar_actions %}<a class="btn btn-accent" href="{% url 'member_create' %}">+ New member</a>{% endblock %}
+{% block topbar_actions %}<a class="btn btn-accent" href="{% url 'member_create' %}">+ Add member</a>{% endblock %}
 {% block content %}
+
 <div class="card">
-  <form method="get" class="filter-grid">
-    <div class="filter-search"><label>Search</label>{{ form.q }}</div>
-    <div><label>Cell</label>{{ form.cell }}</div>
-    <div><label>Fellowship</label>{{ form.fellowship }}</div>
-    <div><label>Status</label>{{ form.status }}</div>
-    <div><label>Gender</label>{{ form.gender }}</div>
-    <div><label>Marital</label>{{ form.marital_status }}</div>
-    <div><label>Baptism</label>{{ form.baptism_status }}</div>
-    <div><label>Foundation school</label>{{ form.foundation_school_status }}</div>
-    <div class="filter-actions">
-      <button type="submit">Filter</button>
-      {% if querystring %}<a class="btn-ghost" href="{% url 'member_list' %}">Clear</a>{% endif %}
+  <form method="get" id="filterForm">
+    <div class="filter-row">
+      <input type="text" name="q" value="{{ form.q.value|default:'' }}" placeholder="Search name or member code" class="filter-search">
+      <button type="submit" class="btn-accent">Search</button>
+      <button type="button" class="btn-ghost" id="filtersToggle">Filters ▾</button>
+      {% if has_active_filters %}<a class="btn-ghost" href="{% url 'member_list' %}">Clear all</a>{% endif %}
+    </div>
+    <div id="filterPanel" style="display:none;margin-top:10px;">
+      <div class="filter-row">
+        {{ form.zone }}
+        {{ form.group }}
+        {{ form.church }}
+        {{ form.fellowship }}
+      </div>
+      <div class="filter-row" style="margin-top:8px;">
+        {{ form.cell }}
+        {{ form.department }}
+        {{ form.gender }} {{ form.marital_status }} {{ form.baptism_status }}
+        {{ form.foundation_school_status }} {{ form.status }}
+      </div>
+      <div class="filter-row" style="margin-top:8px;">
+        <button type="submit" class="btn-accent">Apply filters</button>
+        <a class="btn-ghost" href="{% url 'member_list' %}">Clear</a>
+      </div>
     </div>
   </form>
 </div>
 
 <div class="card">
-  <p class="muted" style="margin-top:0;">{{ total }} member{{ total|pluralize }}</p>
+  <div class="list-head">
+    <div><strong>{{ total }}</strong> member{{ total|pluralize }}</div>
+  </div>
+
   {% if page.object_list %}
-  <table class="data">
-    <tr><th>Name</th><th>Member code</th><th>Cell</th><th>Phone</th><th>Status</th></tr>
+  <div class="member-cards">
     {% for m in page.object_list %}
-    <tr>
-      <td><a href="{% url 'member_detail' m.id %}">{{ m.surname }} {{ m.other_names }}</a></td>
-      <td class="muted">{{ m.member_code }}</td>
-      <td>{{ m.cell|default:"—" }}</td>
-      <td>{{ m.phone_primary|default:"—" }}</td>
-      <td>{% if m.is_active %}<span class="badge badge-ok">Active</span>{% else %}<span class="badge badge-warn">Inactive</span>{% endif %}</td>
-    </tr>
+    <a class="member-card" href="{% url 'member_detail' m.id %}">
+      <div class="mc-avatar">{% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}{{ m.surname|first }}{{ m.other_names|first }}{% endif %}</div>
+      <div class="mc-body">
+        <div class="mc-line1">
+          <span class="mc-name">{{ m.surname }} {{ m.other_names }}</span>
+          <span class="mc-code">{{ m.member_code }}</span>
+          {% if role_by_member|get_item:m.id %}<span class="mc-role">{{ role_by_member|get_item:m.id }}</span>{% endif %}
+        </div>
+        <div class="mc-line2">
+          <span class="mc-place">{{ m.church.name }}{% if m.cell %} · {{ m.cell.fellowship.name }} · {{ m.cell.name }}{% endif %}</span>
+        </div>
+      </div>
+      <div class="mc-meta">
+        <span class="mc-phone">{{ m.phone_primary|default:"—" }}</span>
+        <span class="badge {% if m.is_active %}badge-ok{% else %}badge-danger{% endif %}">{% if m.is_active %}Active{% else %}Inactive{% endif %}</span>
+      </div>
+      <div class="mc-chev">›</div>
+    </a>
     {% endfor %}
-  </table>
+  </div>
 
   {% if page.has_other_pages %}
-  <div style="margin-top:16px;display:flex;gap:8px;align-items:center;">
-    {% if page.has_previous %}<a class="btn-ghost" href="?{{ querystring }}&page={{ page.previous_page_number }}">&larr; Prev</a>{% endif %}
+  <div class="pager">
+    {% if page.has_previous %}<a class="btn-ghost" href="?page={{ page.previous_page_number }}&{{ querystring }}">‹ Prev</a>{% endif %}
     <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
-    {% if page.has_next %}<a class="btn-ghost" href="?{{ querystring }}&page={{ page.next_page_number }}">Next &rarr;</a>{% endif %}
+    {% if page.has_next %}<a class="btn-ghost" href="?page={{ page.next_page_number }}&{{ querystring }}">Next ›</a>{% endif %}
   </div>
   {% endif %}
   {% else %}
-  <p class="muted">No members match your filters.</p>
+  <p class="muted">No members match these filters. <a href="{% url 'member_list' %}">Clear filters</a></p>
   {% endif %}
 </div>
+
+<script>
+(function(){
+  var t=document.getElementById('filtersToggle'), p=document.getElementById('filterPanel');
+  // auto-open if any non-search filter is active
+  {% if has_location_filters %}p.style.display='block';{% endif %}
+  t.addEventListener('click',function(){ p.style.display = p.style.display==='none' ? 'block' : 'none'; });
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}Scan — {{ event.display_title }}{% endblock %}
+{% block page_heading %}Scan attendance{% endblock %}
+{% block nav_events %}active{% endblock %}
+{% block topbar_actions %}{% url 'attendance_register' event.id as reg_url %}{% back_url fallback=reg_url as bu %}<a class="btn-ghost" href="{{ bu }}">Back</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0;">{{ event.display_title }}</h2>
+  <p class="muted">{{ event.event_date|date:"l, j F Y" }} · {{ event.scope_label }}</p>
+</div>
+
+<div class="card">
+  <h2>Camera scan</h2>
+  <p class="muted">Point the camera at a member's QR code to mark them present. Requires camera permission (and HTTPS on a deployed server).</p>
+  <div id="reader" style="max-width:420px;"></div>
+  <div id="cam-status" class="muted" style="margin-top:8px;"></div>
+</div>
+
+<div class="card">
+  <h2>Manual entry</h2>
+  <p class="muted">If the camera isn't available, type or paste the member code (e.g. CEGWARI3-2026-00411).</p>
+  <div style="display:flex;gap:8px;align-items:end;max-width:480px;">
+    <div style="flex:1;"><label>Member code</label><input type="text" id="codeInput" placeholder="Member code" autocomplete="off"></div>
+    <button type="button" class="btn-accent" id="codeBtn">Mark present</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Marked present this session</h2>
+  <ul id="log" class="scan-log"><li class="muted">Nothing scanned yet.</li></ul>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function(){
+  var MARK_URL = "{% url 'attendance_mark_by_code' event.id %}";
+  var CSRF = "{{ csrf_token }}";
+  var log = document.getElementById('log');
+  var lastCode = null, lastAt = 0;
+
+  function addLog(msg, cls){
+    if(log.querySelector('.muted')) log.innerHTML='';
+    var li=document.createElement('li'); li.className=cls||''; li.textContent=msg;
+    log.insertBefore(li, log.firstChild);
+  }
+  function mark(code){
+    var now=Date.now();
+    if(code===lastCode && now-lastAt<3000) return; // debounce repeat scans
+    lastCode=code; lastAt=now;
+    var fd=new FormData(); fd.append('code',code); fd.append('csrfmiddlewaretoken',CSRF);
+    fetch(MARK_URL,{method:'POST',body:fd}).then(function(r){return r.json();}).then(function(d){
+      if(d.ok){ addLog((d.already?'Already present: ':'Marked present: ')+d.name+' ('+d.code+')', d.already?'muted':'ok'); }
+      else { addLog('Error: '+(d.error||'could not mark'), 'err'); }
+    }).catch(function(){ addLog('Network error marking '+code,'err'); });
+  }
+  // manual entry
+  document.getElementById('codeBtn').addEventListener('click',function(){
+    var v=document.getElementById('codeInput').value.trim();
+    if(v){ mark(v); document.getElementById('codeInput').value=''; }
+  });
+  document.getElementById('codeInput').addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault();document.getElementById('codeBtn').click();} });
+  // camera
+  var status=document.getElementById('cam-status');
+  if(typeof Html5Qrcode==='undefined'){ status.textContent='Scanner library failed to load; use manual entry.'; return; }
+  var h5=new Html5Qrcode("reader");
+  Html5Qrcode.getCameras().then(function(cams){
+    if(!cams||!cams.length){ status.textContent='No camera found; use manual entry.'; return; }
+    var back=cams.find(function(c){return /back|rear|environment/i.test(c.label);})||cams[cams.length-1];
+    h5.start(back.id,{fps:10,qrbox:250},function(text){ mark(text.trim()); },function(){}).catch(function(e){
+      status.textContent='Camera could not start ('+e+'). Use manual entry.';
+    });
+  }).catch(function(e){ status.textContent='Camera unavailable ('+e+'). Use manual entry. (Camera needs HTTPS on a deployed server.)'; });
+})();
+</script>
+{% endblock %}

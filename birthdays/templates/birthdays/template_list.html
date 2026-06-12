@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}Card Templates{% endblock %}
+{% block page_heading %}Birthday card templates{% endblock %}
+{% block nav_birthdays %}active{% endblock %}
+{% block topbar_actions %}<a class="btn-accent" href="{% url 'bd_template_create' %}">+ New template</a>{% endblock %}
+{% block content %}
+{% crumbs home_url="/birthdays/" home_label="Birthdays" current_label="Card templates" %}
+<div class="card">
+  {% if templates %}
+  <table class="data">
+    <tr><th>Name</th><th>Church</th><th>Status</th><th></th></tr>
+    {% for t in templates %}
+    <tr>
+      <td><strong>{{ t.name }}</strong></td>
+      <td class="muted">{{ t.church.name }}</td>
+      <td>{% if t.is_active %}<span class="badge badge-ok">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</td>
+      <td style="text-align:right;"><a class="btn-ghost" href="{% url 'bd_template_edit' t.id %}">Edit</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No templates yet. Create one to start generating birthday cards.</p>
+  {% endif %}
+</div>
+{% endblock %}

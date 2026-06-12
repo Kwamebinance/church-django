@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load birthday_extras %}
+{% block title %}Birthdays{% endblock %}
+{% block page_heading %}Birthdays{% endblock %}
+{% block nav_birthdays %}active{% endblock %}
+{% block topbar_actions %}<a class="btn-ghost" href="{% url 'bd_template_list' %}">Manage card templates</a>{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <a class="chip {% if period == 'today' %}chip-on{% endif %}" href="?period=today">Today</a>
+    <a class="chip {% if period == 'week' %}chip-on{% endif %}" href="?period=week">This week</a>
+    <a class="chip {% if period == 'month' %}chip-on{% endif %}" href="?period=month">This month</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="list-head"><div><strong>{{ count }}</strong> birthday{{ count|pluralize }}
+    {% if period == 'today' %}today{% elif period == 'week' %}this week{% else %}in the next month{% endif %}</div></div>
+
+  {% if people %}
+  <div class="member-cards">
+    {% for p in people %}
+    <div class="member-card" style="cursor:default;">
+      <div class="mc-avatar">{% if p.m.avatar_url %}<img src="{{ p.m.avatar_url }}" alt="">{% else %}{{ p.m.surname|first }}{{ p.m.other_names|first }}{% endif %}</div>
+      <div class="mc-body">
+        <div class="mc-line1">
+          <a href="{% url 'member_detail' p.m.id %}" class="mc-name">{{ p.m.surname }} {{ p.m.other_names }}</a>
+          {% if p.is_today %}<span class="badge badge-ok">Today 🎂</span>{% endif %}
+        </div>
+        <div class="mc-line2">{{ p.m.church.name }}{% if p.m.cell %} · {{ p.m.cell.name }}{% endif %}</div>
+      </div>
+      <div class="mc-meta">
+        <span class="bd-date">{{ p.month|month_name }} {{ p.day }}</span>
+        <span class="muted" style="font-size:12px;">{% if p.is_today %}turns{% else %}turning{% endif %} {{ p.turning }}</span>
+      </div>
+      <div style="flex-shrink:0;">
+        <a href="{% url 'bd_generate' p.m.id %}" class="btn-ghost">Generate card</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">No birthdays {% if period == 'today' %}today{% elif period == 'week' %}this week{% else %}this month{% endif %}.</p>
+  {% endif %}
+</div>
+{% endblock %}

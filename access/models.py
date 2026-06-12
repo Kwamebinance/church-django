@@ -27,6 +27,10 @@ class Role(models.Model):
     name = models.TextField()
     is_leader = models.BooleanField(default=False)
     display_order = models.IntegerField(default=0)
+    # NET-NEW vs Supabase (which had only is_leader + display_order): a numeric
+    # seniority rank so we can enforce "a leader may only grant roles ranked
+    # strictly below their own" within a unit. Higher = more senior.
+    rank = models.IntegerField(default=10)
     # announcement permission flags (used by can_post/see_announcement later)
     can_announce_own_cell = models.BooleanField(default=False)
     can_announce_own_fellowship = models.BooleanField(default=False)
@@ -73,6 +77,22 @@ class Assignment(models.Model):
     class Meta:
         db_table = "assignments"
 
+    def save(self, *args, **kwargs):
+        # Audit integrity: once an assignment is ended, its end_date cannot be
+        # cleared (no "un-ending"). The record persists as history; to restore a
+        # role, create a new assignment. This guards the app and the admin alike.
+        if self.pk:
+            try:
+                prior = Assignment.objects.get(pk=self.pk)
+            except Assignment.DoesNotExist:
+                prior = None
+            if prior and prior.end_date is not None and self.end_date is None:
+                raise ValueError(
+                    "An ended assignment cannot be reopened. Create a new "
+                    "assignment to restore the role; the ended record is kept "
+                    "as history.")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.member} as {self.role}"
 
@@ -97,3 +117,19 @@ class MemberRole(models.Model):
 
     def __str__(self):
         return f"{self.member} {self.level}@{self.scope_type}"
+
+
+class UnitRoleApplicability(models.Model):
+    """Which roles are valid for which unit type (cell/fellowship/department/church).
+    Filters the role dropdown when assigning. Ported from unit_role_applicability."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE,
+                             related_name="applicabilities", db_column="role_id")
+    unit_type = models.CharField(max_length=20)  # cell | fellowship | department | church
+
+    class Meta:
+        db_table = "unit_role_applicability"
+        unique_together = ("role", "unit_type")
+
+    def __str__(self):
+        return f"{self.role.name} @ {self.unit_type}"

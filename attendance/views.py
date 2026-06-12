@@ -19,8 +19,14 @@ from accounts.enums import AccessLevel
 from accounts.models import Member
 from accounts.permissions import can_access, scope_filter
 from events.models import AttendanceEvent
-from .models import AttendanceRecord, CountContribution, AttendancePresence, EventExpectedAttendee
+from .models import (AttendanceRecord, CountContribution, AttendancePresence,
+                     EventExpectedAttendee, AttendanceVisitor, FirstTimerStage)
 from .services import snapshot_expected_attendees
+
+
+def __now():
+    from django.utils import timezone
+    return timezone.now()
 
 
 def _require_counter(request):
@@ -119,14 +125,19 @@ def register(request, event_id):
     turnout_pct = round(attended * 100 / expected_total) if expected_total else 0
 
     counts = event.count_contributions.select_related("counted_by").order_by("created_at")
+    visitors = event.visitors.order_by("name")
+    visitor_count = visitors.count()
     summary = {
         "expected": expected_total, "present": present, "late": late,
         "excused": excused, "absent": absent_total, "attended": attended,
         "turnout_pct": turnout_pct, "head_total": sum(c.count for c in counts),
+        "visitors": visitor_count,
+        "total_present": attended + visitor_count,  # members who came + visitors
     }
     return render(request, "attendance/register.html", {
         "event": event, "rows": rows, "presence_choices": AttendancePresence.choices,
         "counts": counts, "summary": summary, "is_open": _is_open(event),
+        "visitors": visitors,
     })
 
 
@@ -203,6 +214,85 @@ def add_expected_search(request, event_id):
     rows = [{"id": str(m.id), "name": f"{m.surname} {m.other_names}", "code": m.member_code}
             for m in qs.order_by("surname")[:15]]
     return JsonResponse({"results": rows})
+
+
+@login_required
+def add_visitor(request, event_id):
+    """Capture a visitor/first-timer inline on the register (name + phone).
+    Lands at stage 'first_timer', ready for the follow-up pipeline."""
+    profile = _require_counter(request)
+    event = _get_event(profile, event_id)
+    if request.method == "POST":
+        if not _is_open(event):
+            messages.error(request, "This register is closed. Reopen it to make changes.")
+            return redirect("attendance_register", event_id=event.id)
+        name = (request.POST.get("name") or "").strip()
+        if name:
+            AttendanceVisitor.objects.create(
+                event=event, name=name, phone=(request.POST.get("phone") or "").strip() or None,
+                stage=FirstTimerStage.FIRST_TIMER, stage_first_timer_at=__now())
+            messages.success(request, f"Added visitor {name}.")
+        else:
+            messages.error(request, "A name is required to add a visitor.")
+    return redirect("attendance_register", event_id=event.id)
+
+
+@login_required
+def remove_visitor(request, event_id, visitor_id):
+    profile = _require_counter(request)
+    event = _get_event(profile, event_id)
+    if request.method == "POST":
+        if not _is_open(event):
+            messages.error(request, "This register is closed. Reopen it to make changes.")
+            return redirect("attendance_register", event_id=event.id)
+        AttendanceVisitor.objects.filter(id=visitor_id, event=event).delete()
+    return redirect("attendance_register", event_id=event.id)
+
+
+@login_required
+def scan(request, event_id):
+    """QR scan page for marking attendance. Live camera (html5-qrcode) with a
+    manual member_code entry fallback for when the camera is unavailable
+    (e.g. no HTTPS). Both routes POST to mark_by_code."""
+    profile = _require_counter(request)
+    event = _get_event(profile, event_id)
+    if not _is_open(event):
+        messages.error(request, "This register is closed. Reopen it to scan.")
+        return redirect("attendance_register", event_id=event.id)
+    return render(request, "attendance/scan.html", {"event": event})
+
+
+@login_required
+def mark_by_code(request, event_id):
+    """Mark a member present by their member_code (from a QR scan or typed).
+    Returns JSON for the scan page's async calls."""
+    from django.http import JsonResponse
+    profile = _require_counter(request)
+    event = _get_event(profile, event_id)
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "POST required"}, status=405)
+    if not _is_open(event):
+        return JsonResponse({"ok": False, "error": "Register is closed."}, status=400)
+    code = (request.POST.get("code") or "").strip()
+    if not code:
+        return JsonResponse({"ok": False, "error": "No code provided."}, status=400)
+    member = Member.objects.filter(member_code=code, church_id=event.church_id,
+                                   is_active=True).first()
+    if not member:
+        return JsonResponse({"ok": False, "error": f"No active member with code {code} in this church."}, status=404)
+    # ensure they're on the expected list (add as is_added if not), then mark present
+    EventExpectedAttendee.objects.get_or_create(
+        event=event, member=member, defaults={"is_added": True, "created_by": request.user})
+    rec, created = AttendanceRecord.objects.get_or_create(
+        event=event, member=member,
+        defaults={"presence": AttendancePresence.PRESENT, "recorded_by": request.user})
+    if not created and rec.presence != AttendancePresence.PRESENT:
+        rec.presence = AttendancePresence.PRESENT
+        rec.recorded_by = request.user
+        rec.save(update_fields=["presence", "recorded_by", "updated_at"])
+    return JsonResponse({"ok": True, "name": f"{member.surname} {member.other_names}",
+                         "code": member.member_code,
+                         "already": (not created and rec.presence == AttendancePresence.PRESENT)})
 
 
 @login_required

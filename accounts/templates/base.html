@@ -18,6 +18,8 @@
 
         <div class="nav-section">People</div>
         <a class="nav-link {% block nav_members %}{% endblock %}" href="{% url 'member_list' %}">Members</a>
+        <a class="nav-link {% block nav_firsttimers %}{% endblock %}" href="{% url 'ft_queue' %}">First-Timers</a>
+        <a class="nav-link {% block nav_birthdays %}{% endblock %}" href="{% url 'birthday_list' %}">Birthdays</a>
         <a class="nav-link {% block nav_registrations %}{% endblock %}" href="{% url 'reg_queue' %}">Registrations</a>
 
         <div class="nav-section">Gatherings</div>
@@ -48,5 +50,44 @@
       </div>
     </div>
   </div>
+
+  {# ---- reusable confirm dialog (replaces native confirm) ---- #}
+  <div id="confirmOverlay" class="confirm-overlay" style="display:none;">
+    <div class="confirm-box" role="dialog" aria-modal="true">
+      <h3 id="confirmTitle">Are you sure?</h3>
+      <p id="confirmMsg" class="muted"></p>
+      <div class="confirm-actions">
+        <button type="button" class="btn-ghost" id="confirmCancel">Cancel</button>
+        <button type="button" class="btn-accent" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <script>
+  // Any element with data-confirm="message" intercepts its form submit (or click)
+  // and routes it through the in-app dialog instead of native confirm().
+  (function(){
+    var overlay=document.getElementById('confirmOverlay'),
+        msgEl=document.getElementById('confirmMsg'),
+        okBtn=document.getElementById('confirmOk'),
+        cancelBtn=document.getElementById('confirmCancel'),
+        pending=null;
+    function open(msg, danger){ msgEl.textContent=msg||'This action cannot be undone.';
+      okBtn.className = danger ? 'btn-accent confirm-danger' : 'btn-accent';
+      overlay.style.display='flex'; }
+    function close(){ overlay.style.display='none'; pending=null; }
+    cancelBtn.addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
+    okBtn.addEventListener('click', function(){ if(pending){ var f=pending; pending=null; overlay.style.display='none'; f(); } });
+    // forms that need confirmation
+    document.querySelectorAll('form[data-confirm]').forEach(function(form){
+      form.addEventListener('submit', function(e){
+        if(form.dataset._confirmed){ return; }  // already confirmed
+        e.preventDefault();
+        pending=function(){ form.dataset._confirmed='1'; form.submit(); };
+        open(form.getAttribute('data-confirm'), form.hasAttribute('data-danger'));
+      });
+    });
+  })();
+  </script>
 </body>
 </html>

@@ -1,49 +1,315 @@
 {% extends "base.html" %}
+{% load nav %}
 {% block title %}{{ m.surname }} {{ m.other_names }}{% endblock %}
-{% block page_heading %}{{ m.surname }} {{ m.other_names }}{% endblock %}
+{% block page_heading %}Member{% endblock %}
 {% block nav_members %}active{% endblock %}
-{% block topbar_actions %}
-  <a class="btn" href="{% url 'member_edit' m.id %}">Edit</a>
-{% endblock %}
 {% block content %}
-<div class="card" style="display:flex;gap:22px;align-items:flex-start;">
-  {% if m.official_photo_path %}
-    <img src="{{ MEDIA_URL }}{{ m.official_photo_path }}" alt="photo"
-         style="width:140px;height:140px;object-fit:cover;border-radius:var(--r-lg);border:1px solid var(--line);">
-  {% endif %}
-  <div>
-    <h2 style="margin-top:0;">{{ m.title }} {{ m.surname }} {{ m.other_names }}
-      {% if m.is_active %}<span class="badge badge-ok">Active</span>{% else %}<span class="badge badge-warn">Inactive</span>{% endif %}
-    </h2>
-    <p class="muted">{{ m.member_code }} &middot; {{ m.church }}{% if m.cell %} &middot; {{ m.cell }}{% endif %}</p>
+{% crumbs home_url="/members/" home_label="Members" current_label=m.surname|add:" "|add:m.other_names %}
+
+{# ---------- header ---------- #}
+<div class="card profile-header">
+  <div class="ph-photo">
+    {% if m.avatar_url %}<img src="{{ m.avatar_url }}" alt="">{% else %}<div class="ph-photo-empty">{{ m.surname|first }}{{ m.other_names|first }}</div>{% endif %}
+  </div>
+  <div class="ph-main">
+    <div class="ph-code">{{ m.member_code }}</div>
+    <h1 class="ph-name">{{ m.surname }} {{ m.other_names }}</h1>
+    {% if m.preferred_name %}<div class="muted">Goes by {{ m.preferred_name }}</div>{% endif %}
+    <div class="ph-badges">
+      <span class="badge {% if m.is_active %}badge-ok{% else %}badge-danger{% endif %}">{% if m.is_active %}Active{% else %}Inactive{% endif %}</span>
+      {% for a in assignments %}
+        <span class="badge">{% if a.role.is_leader %}{{ a.role.name }}{% else %}{{ a.role.name }}{% endif %} · {% if a.cell %}{{ a.cell.name }}{% elif a.fellowship %}{{ a.fellowship.name }}{% elif a.department %}{{ a.department.name }}{% endif %}</span>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="ph-actions">
+    <a class="btn-ghost" href="{% url 'member_edit' m.id %}">Edit</a>
   </div>
 </div>
 
-<div class="card">
-  <h2>Contact</h2>
-  <table class="data">
-    <tr><th>Phone</th><td>{{ m.phone_primary|default:"—" }}</td></tr>
-    <tr><th>WhatsApp</th><td>{{ m.phone_whatsapp|default:"—" }}</td></tr>
-    <tr><th>Telegram</th><td>{{ m.telegram_username|default:"—" }}</td></tr>
-    <tr><th>Email</th><td>{{ m.email|default:"—" }}</td></tr>
-    <tr><th>Address</th><td>{{ m.address|default:"—" }}{% if m.city %}, {{ m.city }}{% endif %}{% if m.country %}, {{ m.country }}{% endif %}</td></tr>
-  </table>
+{# ---------- tabs ---------- #}
+<div class="tabs">
+  {% for key, label in tabs %}
+  <a class="tab {% if active_tab == key %}tab-active{% endif %}" href="?tab={{ key }}">{{ label }}</a>
+  {% endfor %}
 </div>
 
-<div class="card">
-  <h2>Details</h2>
-  <table class="data">
-    <tr><th>Gender</th><td>{{ m.get_gender_display|default:"—" }}</td></tr>
-    <tr><th>Date of birth</th><td>{{ m.date_of_birth|default:"—" }}</td></tr>
-    <tr><th>Marital status</th><td>{{ m.get_marital_status_display|default:"—" }}</td></tr>
-    <tr><th>Occupation</th><td>{{ m.occupation|default:"—" }}{% if m.employer %} at {{ m.employer }}{% endif %}</td></tr>
-    <tr><th>Baptism</th><td>{{ m.get_baptism_status_display|default:"—" }}</td></tr>
-    <tr><th>Born again</th><td>{{ m.born_again_date|default:"—" }}</td></tr>
-    <tr><th>Foundation school</th><td>{{ m.get_foundation_school_status_display }}{% if m.foundation_school_completion_date %} ({{ m.foundation_school_completion_date }}){% endif %}</td></tr>
-    <tr><th>Date joined</th><td>{{ m.date_joined|default:"—" }}</td></tr>
-  </table>
-  {% if not m.is_active and m.inactive_reason %}
-    <p class="muted">Inactive reason: {{ m.inactive_reason }}</p>
+{% if active_tab == "profile" %}
+  {# ----- Official photo ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">🖼️</span> Official photo</h2>
+    <p class="muted">Passport-style photo managed by leaders. Used for posters, reports, and identification.</p>
+    {% if m.official_photo_url %}<img src="{{ m.official_photo_url }}" style="max-width:140px;border-radius:var(--r);"><br>{% else %}<p class="muted">No official photo uploaded.</p>{% endif %}
+    <form method="post" action="{% url 'upload_photo' m.id %}" enctype="multipart/form-data" style="margin-top:10px;">
+      {% csrf_token %}
+      <input type="file" name="photo" accept="image/*" required>
+      <button type="submit" class="btn-ghost">Upload</button>
+    </form>
+  </div>
+
+  {# ----- Attendance QR ----- #}
+  <div class="card qr-card">
+    <h2><span class="sec-ico">▦</span> Attendance QR</h2>
+    <div class="qr-wrap">{{ qr_svg|safe }}</div>
+    <div class="qr-meta">
+      <div>{{ m.surname }} {{ m.other_names }}</div>
+      <div class="muted">{{ m.member_code }}</div>
+    </div>
+    <a class="btn-ghost" href="{% url 'member_qr_print' m.id %}" target="_blank">Print QR</a>
+    <p class="muted" style="font-size:12px;">Scan this code at an event to mark this person present.</p>
+  </div>
+
+  {# ----- Identity ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">👤</span> Identity</h2>
+    <div class="field-grid">
+      <div><label>Academic / professional title(s)</label><div>{{ m.academic_title|default:"—" }}</div></div>
+      <div><label>Title</label><div>{{ m.title|default:"—" }}</div></div>
+      <div><label>Surname</label><div>{{ m.surname }}</div></div>
+      <div><label>Other names</label><div>{{ m.other_names }}</div></div>
+      <div><label>Preferred name</label><div>{{ m.preferred_name|default:"—" }}</div></div>
+      <div><label>Gender</label><div>{{ m.get_gender_display|default:"—" }}</div></div>
+      <div><label>Date of birth</label><div>{{ m.date_of_birth|date:"j F Y"|default:"—" }}</div></div>
+      <div><label>Marital status</label><div>{{ m.get_marital_status_display|default:"—" }}</div></div>
+    </div>
+  </div>
+
+  {# ----- Contact ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">📞</span> Contact</h2>
+    <div class="field-grid">
+      <div><label>Phone (primary)</label><div>{{ m.phone_primary|default:"—" }}</div></div>
+      <div><label>WhatsApp</label><div>{{ m.phone_whatsapp|default:"—" }}</div></div>
+      <div><label>Telegram</label><div>{{ m.telegram_username|default:"—" }}</div></div>
+      <div><label>Email</label><div>{{ m.email|default:"—" }}</div></div>
+    </div>
+  </div>
+
+  {# ----- Location ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">📍</span> Location</h2>
+    <div class="field-grid">
+      <div><label>Address</label><div>{{ m.address|default:"—" }}</div></div>
+      <div><label>City</label><div>{{ m.city|default:"—" }}</div></div>
+      <div><label>Country</label><div>{{ m.country|default:"—" }}</div></div>
+    </div>
+  </div>
+
+  {# ----- Vocation ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">💼</span> Vocation</h2>
+    <div class="field-grid">
+      <div><label>Occupation</label><div>{{ m.occupation|default:"—" }}</div></div>
+      <div><label>Employer</label><div>{{ m.employer|default:"—" }}</div></div>
+    </div>
+  </div>
+
+  {# ----- Spiritual journey ----- #}
+  <div class="card">
+    <h2><span class="sec-ico">✝️</span> Spiritual journey</h2>
+    <div class="field-grid">
+      <div><label>Baptism</label><div>{{ m.get_baptism_status_display|default:"—" }}</div></div>
+      <div><label>Foundation School</label><div>{{ m.get_foundation_school_status_display|default:"—" }}</div></div>
+      <div><label>Born again</label><div>{{ m.born_again_date|date:"j F Y"|default:"—" }}</div></div>
+      <div><label>Joined church</label><div>{{ m.date_joined|date:"j F Y"|default:"—" }}</div></div>
+    </div>
+  </div>
+
+{% elif active_tab == "assignments" %}
+  <div class="card">
+    <h2><span class="sec-ico">📍</span> Placement</h2>
+    <p>{{ m.church.name }}{% if m.cell %} · {{ m.cell.fellowship.name }} · {{ m.cell.name }}{% endif %}</p>
+    {% if can_change_placement %}
+      <button type="button" class="btn-ghost" onclick="document.getElementById('placementForm').style.display='block';this.style.display='none';">Change placement</button>
+      <form method="post" action="{% url 'change_placement' m.id %}" id="placementForm" style="display:none;margin-top:10px;">
+        {% csrf_token %}
+        <select name="cell_id" class="select" style="max-width:360px;">
+          <option value="">— Select cell —</option>
+          {% for cell in placement_cells %}<option value="{{ cell.id }}" {% if m.cell_id == cell.id %}selected{% endif %}>{{ cell.fellowship.name }} · {{ cell.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-accent" style="margin-left:8px;">Save</button>
+      </form>
+    {% else %}
+      <p class="muted">Placement reflects the member's church, fellowship, and cell.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2 style="margin:0;"><span class="sec-ico">▤</span> Roles &amp; leadership <span class="muted">({{ assignments|length }})</span></h2>
+      {% if has_assign_options %}<button type="button" class="btn-accent" id="addAssignBtn">+ Add assignment</button>{% endif %}
+    </div>
+
+    {% if has_assign_options %}
+    <form method="post" action="{% url 'assignment_add' m.id %}" id="addAssignForm" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r);">
+      {% csrf_token %}
+      <input type="hidden" name="unit_type" id="aa_unit_type">
+      <input type="hidden" name="unit_id" id="aa_unit_id">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
+        <div style="flex:1;min-width:240px;"><label>Unit</label>
+          <select id="aa_unit" class="select"><option value="">— Select unit —</option></select></div>
+        <div style="width:220px;"><label>Role</label>
+          <select name="role_id" id="aa_role" class="select"><option value="">— Select role —</option></select></div>
+        <button type="submit" class="btn-accent">Add</button>
+      </div>
+    </form>
+    {% endif %}
+
+    {% if assignments %}
+    <table class="data" style="margin-top:12px;">
+      {% for a in assignments %}
+      <tr>
+        <td>
+          <strong>{% if a.cell %}{{ a.cell.name }}{% elif a.fellowship %}{{ a.fellowship.name }}{% elif a.department %}{{ a.department.name }}{% else %}—{% endif %}</strong>
+          <span class="muted">{% if a.cell %}Cell{% elif a.fellowship %}Fellowship{% elif a.department %}Department{% endif %}</span>
+          {% if a.role.is_leader %}<span class="badge badge-warn" style="font-size:10px;">LEADER</span>{% endif %}
+          <br><span class="muted">{{ a.role.name }} · {{ a.start_date|date:"j M Y" }}</span>
+        </td>
+        <td style="text-align:right;white-space:nowrap;">
+          {% if a.id in manageable_ids %}
+            <button type="button" class="btn-ghost cr-btn" data-aid="{{ a.id }}">Change role</button>
+            <form method="post" action="{% url 'assignment_end' m.id a.id %}" style="display:inline;" data-confirm="End this assignment? It will move to past assignments." data-danger>
+              {% csrf_token %}<button type="submit" class="btn-ghost" style="color:var(--danger);">End assignment</button>
+            </form>
+            <form method="post" action="{% url 'assignment_change_role' m.id a.id %}" class="cr-form" id="cr-{{ a.id }}" style="display:none;margin-top:6px;">
+              {% csrf_token %}
+              <select name="role_id" class="select" style="max-width:200px;display:inline-block;"></select>
+              <button type="submit" class="btn-accent">Save</button>
+            </form>
+          {% else %}<span class="muted" style="font-size:12px;">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No active roles or assignments.</p>{% endif %}
+  </div>
+
+  {% if past_assignments %}
+  <div class="card">
+    <h2><span class="sec-ico">🕓</span> Past assignments <span class="muted">({{ past_assignments|length }})</span></h2>
+    <table class="data">
+      {% for a in past_assignments %}
+      <tr><td>
+        <strong>{% if a.cell %}{{ a.cell.name }}{% elif a.fellowship %}{{ a.fellowship.name }}{% elif a.department %}{{ a.department.name }}{% else %}—{% endif %}</strong>
+        <span class="muted">{% if a.cell %}Cell{% elif a.fellowship %}Fellowship{% elif a.department %}Department{% endif %}</span>
+        {% if a.role.is_leader %}<span class="badge" style="font-size:10px;">LEADER</span>{% endif %}
+        <br><span class="muted">{{ a.role.name }} · {{ a.start_date|date:"j M Y" }} – {{ a.end_date|date:"j M Y" }}</span>
+      </td></tr>
+      {% endfor %}
+    </table>
+  </div>
   {% endif %}
-</div>
+
+  {% if has_assign_options %}
+  <script>
+  (function(){
+    var OPTS={{ assign_options_json|safe }};
+    var btn=document.getElementById('addAssignBtn'), form=document.getElementById('addAssignForm');
+    var unitSel=document.getElementById('aa_unit'), roleSel=document.getElementById('aa_role');
+    var utHidden=document.getElementById('aa_unit_type'), uidHidden=document.getElementById('aa_unit_id');
+    btn.addEventListener('click',function(){ form.style.display = form.style.display==='none'?'block':'none'; });
+    OPTS.forEach(function(o,i){ var op=document.createElement('option'); op.value=i; op.textContent=o.label; unitSel.appendChild(op); });
+    unitSel.addEventListener('change',function(){
+      roleSel.innerHTML='<option value="">— Select role —</option>';
+      var o=OPTS[unitSel.value]; if(!o){utHidden.value='';uidHidden.value='';return;}
+      utHidden.value=o.unit_type; uidHidden.value=o.unit_id;
+      o.roles.forEach(function(r){ var op=document.createElement('option'); op.value=r[0]; op.textContent=r[1]; roleSel.appendChild(op); });
+    });
+    // change-role inline forms
+    var CR={{ change_role_opts_json|safe }};
+    document.querySelectorAll('.cr-btn').forEach(function(b){
+      b.addEventListener('click',function(){
+        var aid=b.getAttribute('data-aid'), f=document.getElementById('cr-'+aid);
+        if(f.style.display==='none'){
+          var sel=f.querySelector('select'); sel.innerHTML='';
+          (CR[aid]||[]).forEach(function(r){ var op=document.createElement('option'); op.value=r[0]; op.textContent=r[1]; sel.appendChild(op); });
+          f.style.display='block';
+        } else { f.style.display='none'; }
+      });
+    });
+  })();
+  </script>
+  {% endif %}
+
+{% elif active_tab == "attendance" %}
+  <div class="card">
+    <h2><span class="sec-ico">✅</span> Attendance history</h2>
+    {% if records %}
+    <table class="data">
+      <tr><th>Event</th><th>Date</th><th>Presence</th></tr>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.event.display_title }}</td>
+        <td class="muted">{{ r.event.event_date|date:"j M Y" }}</td>
+        <td>
+          {% if r.presence == 'present' %}<span class="badge badge-ok">Present</span>
+          {% elif r.presence == 'late' %}<span class="badge badge-warn">Late</span>
+          {% elif r.presence == 'excused' %}<span class="badge">Excused</span>
+          {% else %}<span class="badge badge-danger">Absent</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No attendance recorded yet.</p>{% endif %}
+  </div>
+
+{% elif active_tab == "journey" %}
+  <div class="card">
+    <h2><span class="sec-ico">🧭</span> Member journey</h2>
+    <p class="muted">Progress from first contact through to leadership. Dates shown where known.</p>
+    <p class="muted" style="font-size:12px;">Solid dot = confirmed by record · light dot = inferred from a later milestone.</p>
+    <ul class="journey">
+      {% for ms in journey %}
+      <li class="jr-item jr-{{ ms.status }}">
+        <span class="jr-dot"></span>
+        <div class="jr-body">
+          <div class="jr-head">
+            <span class="jr-label">{{ ms.label }}</span>
+            {% if ms.date %}<span class="jr-date">{{ ms.date|date:"j M Y" }}</span>{% endif %}
+            {% if ms.status == 'inferred' %}<span class="jr-tag">inferred</span>
+            {% elif ms.status == 'future' %}<span class="jr-tag">not yet reached</span>
+            {% elif ms.status == 'pending' %}<span class="jr-tag">pending</span>
+            {% elif ms.status == 'past' %}<span class="jr-tag">past</span>{% endif %}
+          </div>
+          {% if ms.sub %}<div class="jr-sub">{{ ms.sub }}</div>{% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+{% elif active_tab == "history" %}
+  <div class="card">
+    <h2><span class="sec-ico">🕓</span> History</h2>
+    <p class="muted">A record of changes to this member and their assignments.</p>
+    {% if history %}
+    <ul class="audit-list">
+      {% for h in history %}
+      <li class="audit-item">
+        <div class="audit-main">{{ h.context|default:h.action }}</div>
+        <div class="audit-meta">
+          <span>{{ h.created_at|date:"j M Y, g:i a" }}</span>
+          {% if h.actor_email %}<span>· by {{ h.actor_email }}</span>{% endif %}
+          <span class="audit-action">{{ h.action }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No recorded history yet. Changes to assignments, placement, and details will appear here.</p>
+    {% endif %}
+  </div>
+
+{% else %}
+  {# stubbed tabs: family / finance #}
+  <div class="card stub-card">
+    <div class="stub-ico">🚧</div>
+    <h2>{{ active_tab|capfirst }}</h2>
+    <p class="muted">
+      {% if active_tab == 'family' %}Households, marriages, and family links will appear here once the Family domain is built.
+      {% elif active_tab == 'finance' %}Giving and partnership records will appear here once the Finance domain is built.
+      {% else %}Coming soon.{% endif %}
+    </p>
+  </div>
+{% endif %}
 {% endblock %}

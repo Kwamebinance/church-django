@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}{% if t %}Edit{% else %}New{% endif %} Template{% endblock %}
+{% block page_heading %}{% if t %}Edit{% else %}New{% endif %} card template{% endblock %}
+{% block nav_birthdays %}active{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/birthdays/">Birthdays</a><span class="crumb-sep">›</span>
+  <a href="{% url 'bd_template_list' %}">Card templates</a><span class="crumb-sep">›</span>
+  <span class="crumb-current">{% if t %}Edit{% else %}New{% endif %} template</span>
+</nav>
+<div class="card" style="max-width:760px;">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="margin-bottom:12px;"><label>Name</label>
+      <input type="text" name="name" class="select" value="{{ t.name|default:'' }}" required></div>
+    <div style="margin-bottom:12px;"><label>Church</label>
+      <select name="church_id" class="select" required>
+        {% for ch in churches %}<option value="{{ ch.id }}" {% if t and t.church_id == ch.id %}selected{% endif %}>{{ ch.name }}</option>{% endfor %}
+      </select></div>
+    <div style="margin-bottom:12px;"><label>Background image {% if t.image_path %}(leave blank to keep current){% endif %}</label>
+      <input type="file" name="background" accept="image/*" {% if not t %}required{% endif %}></div>
+    <div style="margin-bottom:12px;"><label><input type="checkbox" name="is_active" {% if not t or t.is_active %}checked{% endif %}> Active</label></div>
+
+    <h3 style="margin:18px 0 6px;">Layout (pixels on the background)</h3>
+    <p class="muted" style="font-size:12px;">Set where the photo and text sit on your background. You can refine these after a preview.</p>
+    <div class="field-grid">
+      <div><label>Photo X</label><input type="number" name="photo_x" class="select" value="{{ t.photo_x|default:40 }}"></div>
+      <div><label>Photo Y</label><input type="number" name="photo_y" class="select" value="{{ t.photo_y|default:40 }}"></div>
+      <div><label>Photo size</label><input type="number" name="photo_size" class="select" value="{{ t.photo_size|default:300 }}"></div>
+      <div><label><input type="checkbox" name="photo_circle" {% if not t or t.photo_circle %}checked{% endif %}> Circular photo</label></div>
+      <div><label>Name X</label><input type="number" name="name_x" class="select" value="{{ t.name_x|default:40 }}"></div>
+      <div><label>Name Y</label><input type="number" name="name_y" class="select" value="{{ t.name_y|default:360 }}"></div>
+      <div><label>Name size</label><input type="number" name="name_size" class="select" value="{{ t.name_size|default:64 }}"></div>
+      <div><label>Message X</label><input type="number" name="message_x" class="select" value="{{ t.message_x|default:40 }}"></div>
+      <div><label>Message Y</label><input type="number" name="message_y" class="select" value="{{ t.message_y|default:440 }}"></div>
+      <div><label>Message size</label><input type="number" name="message_size" class="select" value="{{ t.message_size|default:36 }}"></div>
+      <div><label>Name font</label>
+        <select name="name_font" class="select">
+          {% for key, lbl in font_options %}<option value="{{ key }}" {% if t and t.name_font == key %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select></div>
+      <div><label>Message font</label>
+        <select name="message_font" class="select">
+          {% for key, lbl in font_options %}<option value="{{ key }}" {% if t and t.message_font == key %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+        </select></div>
+      <div><label>Text colour (hex)</label><input type="text" name="text_color" class="select" value="{{ t.text_color|default:'#FFFFFF' }}"></div>
+      <div><label>Outline colour (blank = auto)</label><input type="text" name="text_stroke" class="select" value="{{ t.text_stroke|default:'' }}" placeholder="auto"></div>
+      <div><label>Outline width</label><input type="number" name="text_stroke_width" class="select" value="{{ t.text_stroke_width|default:3 }}"></div>
+    </div>
+    <div style="margin-top:16px;">
+      <button type="submit" class="btn-accent">Save template</button>
+      <a class="btn-ghost" href="{% url 'bd_template_list' %}" style="margin-left:8px;">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

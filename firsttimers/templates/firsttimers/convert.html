@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Convert {{ v.name }} to member{% endblock %}
+{% block page_heading %}Convert to member{% endblock %}
+{% block nav_firsttimers %}active{% endblock %}
+{% block content %}
+<div class="card" style="max-width:760px;">
+  <p class="muted">Creating a member record for <strong>{{ v.name }}</strong>, prefilled from their first-timer details. Review and complete, then save.</p>
+  {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors|join:", " }}</div>{% endif %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+      <div style="margin-bottom:12px;">
+        <label>{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="alert alert-error">{{ field.errors|join:", " }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div style="margin-top:16px;">
+      <button type="submit" class="btn-accent">Create member</button>
+      <a class="btn-ghost" href="{% url 'ft_detail' v.id %}" style="margin-left:8px;">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

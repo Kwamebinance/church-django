@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}{{ v.name }}{% endblock %}
+{% block page_heading %}First-Timer{% endblock %}
+{% block nav_firsttimers %}active{% endblock %}
+{% block content %}
+{% crumbs home_url="/first-timers/" home_label="First-Timers" current_label=v.name %}
+
+<div class="card">
+  <h2 style="margin-top:0;">{{ v.name }}</h2>
+  <div class="field-grid">
+    <div><label>Phone</label><div>{{ v.phone|default:"—" }}</div></div>
+    <div><label>Captured at</label><div>{{ v.event.display_title }} · {{ v.event.event_date|date:"j M Y" }}</div></div>
+    <div><label>Stage</label><div><span class="badge {% if v.stage == 'member' %}badge-ok{% endif %}">{{ v.get_stage_display }}</span></div></div>
+    <div><label>Visitor type</label><div>{{ v.get_visitor_type_display }}</div></div>
+  </div>
+  {% if not v.converted_to_member %}
+  <div style="margin-top:14px;display:flex;gap:8px;">
+    <form method="post" action="{% url 'ft_advance' v.id %}" style="margin:0;">{% csrf_token %}
+      <button type="submit" class="btn-ghost">Advance stage</button></form>
+    {% if can_convert %}
+    <a class="btn-accent" href="{% url 'ft_convert' v.id %}">Convert to member</a>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="alert alert-ok" style="margin-top:12px;">Converted to member:
+    <a href="{% url 'member_detail' v.converted_to_member.id %}">{{ v.converted_to_member.surname }} {{ v.converted_to_member.other_names }}</a></p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Assignment</h2>
+  <p class="muted">Who's following up, and which cell they'll be plugged into.</p>
+  <form method="post" action="{% url 'ft_assign' v.id %}">
+    {% csrf_token %}
+    <div class="field-grid">
+      <div>
+        <label>Follow-up person (member)</label>
+        <div style="position:relative;">
+          <input type="text" id="fuSearch" placeholder="Search members…" autocomplete="off"
+                 value="{% if v.follow_up_member %}{{ v.follow_up_member.surname }} {{ v.follow_up_member.other_names }}{% endif %}">
+          <input type="hidden" name="follow_up_member_id" id="fuId" value="{{ v.follow_up_member_id|default:'' }}">
+          <div id="fuResults" class="add-results"></div>
+        </div>
+      </div>
+      <div>
+        <label>Assigned cell</label>
+        <select name="assigned_cell_id" class="select">
+          <option value="">— None —</option>
+          {% for cell in cells %}
+            <option value="{{ cell.id }}" {% if v.assigned_cell_id == cell.id %}selected{% endif %}>{{ cell.fellowship.name }} · {{ cell.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" style="margin-top:12px;">Save assignment</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Contact log</h2>
+  {% if not v.converted_to_member %}
+  <form method="post" action="{% url 'ft_log_contact' v.id %}" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;max-width:640px;">
+    {% csrf_token %}
+    <div style="width:160px;"><label>Method</label>
+      <select name="method" class="select">{% for val, label in contact_methods %}<option value="{{ val }}">{{ label }}</option>{% endfor %}</select>
+    </div>
+    <div style="flex:1;min-width:220px;"><label>Note</label><input type="text" name="note" placeholder="What happened?"></div>
+    <button type="submit" class="btn-ghost">Log contact</button>
+  </form>
+  {% endif %}
+  {% if contacts %}
+  <table class="data" style="margin-top:14px;">
+    <tr><th>Date</th><th>Method</th><th>Note</th><th>By</th></tr>
+    {% for ct in contacts %}
+    <tr>
+      <td class="muted">{{ ct.contact_date|date:"j M Y" }}</td>
+      <td>{{ ct.get_method_display }}</td>
+      <td>{{ ct.note|default:"—" }}</td>
+      <td class="muted">{% if ct.contacted_by_member %}{{ ct.contacted_by_member.surname }} {{ ct.contacted_by_member.other_names }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No contact attempts logged yet.</p>
+  {% endif %}
+</div>
+
+<script>
+(function(){
+  var inp=document.getElementById('fuSearch'), box=document.getElementById('fuResults'), hid=document.getElementById('fuId');
+  if(!inp) return; var t;
+  inp.addEventListener('input',function(){
+    hid.value='';  // typing invalidates prior selection until re-picked
+    clearTimeout(t); var q=inp.value;
+    t=setTimeout(function(){
+      fetch('{% url "ft_member_search" v.id %}?q='+encodeURIComponent(q))
+        .then(function(r){return r.json();}).then(function(d){
+          box.innerHTML='';
+          d.results.forEach(function(m){
+            var a=document.createElement('div'); a.className='add-result'; a.textContent=m.name+' ('+m.code+')';
+            a.onclick=function(){ inp.value=m.name; hid.value=m.id; box.innerHTML=''; };
+            box.appendChild(a);
+          });
+        });
+    },200);
+  });
+})();
+</script>
+{% endblock %}

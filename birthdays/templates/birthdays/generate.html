@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}Birthday card — {{ member.surname }} {{ member.other_names }}{% endblock %}
+{% block page_heading %}Birthday card{% endblock %}
+{% block nav_birthdays %}active{% endblock %}
+{% block content %}
+{% crumbs home_url="/birthdays/" home_label="Birthdays" current_label="Generate card" %}
+
+{% if not font_ok %}
+<div class="alert alert-warn" style="margin-bottom:14px;">⚠ Card fonts not found on the server — generated text may not appear. The font files should be at <code>birthdays/fonts/</code>. Check they extracted correctly.</div>
+{% endif %}
+
+<div class="card" style="max-width:680px;">
+  <h2 style="margin-top:0;">Card for {{ member.surname }} {{ member.other_names }}</h2>
+  {% if templates %}
+  <form method="post" id="cardForm">
+    {% csrf_token %}
+    <div style="margin-bottom:14px;">
+      <label>Template</label>
+      <select name="template_id" class="select" required>
+        {% for t in templates %}<option value="{{ t.id }}">{{ t.name }} ({{ t.church.name }})</option>{% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label>Write-up</label>
+      <textarea name="message" rows="3" class="select" style="width:100%;">{{ default_msg }}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="submit" name="preview" value="1" class="btn-ghost" formtarget="_blank">Preview</button>
+      <button type="submit" name="download" value="1" class="btn-accent">Download card</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:10px;">Preview opens the composed card in a new tab; Download saves the PNG to share or post.</p>
+  </form>
+  {% else %}
+  <p class="muted">No active card templates yet. {% if request.profile %}<a href="{% url 'bd_template_list' %}">Create one</a> first.{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}

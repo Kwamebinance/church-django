@@ -24,7 +24,7 @@ class AccessLevel(models.TextChoices):
     ADMIN = "admin", "Admin"
     GROUP_PASTOR = "group_pastor", "Group pastor"
     ZONAL_PASTOR = "zonal_pastor", "Zonal pastor"
-    SUPER_ADMIN = "super_admin", "Super admin"
+    SUPER_ADMIN = "super_admin", "System Administrator"
     CHURCH_PASTOR = "church_pastor", "Church pastor"
 
 

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}First-Timers{% endblock %}
+{% block page_heading %}First-Timers{% endblock %}
+{% block nav_firsttimers %}active{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <a class="chip {% if stage == 'active' %}chip-on{% endif %}" href="?stage=active">Active</a>
+    {% for val, label in stages %}
+      <a class="chip {% if stage == val %}chip-on{% endif %}" href="?stage={{ val }}">{{ label }}</a>
+    {% endfor %}
+    <a class="chip {% if stage == 'all' %}chip-on{% endif %}" href="?stage=all">All</a>
+  </div>
+</div>
+<div class="card">
+  {% if visitors %}
+  <table class="data">
+    <tr><th>Name</th><th>Phone</th><th>From event</th><th>Stage</th><th>Follow-up by</th></tr>
+    {% for v in visitors %}
+    <tr>
+      <td><a href="{% url 'ft_detail' v.id %}">{{ v.name }}</a></td>
+      <td class="muted">{{ v.phone|default:"—" }}</td>
+      <td class="muted">{{ v.event.display_title }}<br><span style="font-size:12px;">{{ v.event.event_date|date:"j M Y" }}</span></td>
+      <td><span class="badge {% if v.stage == 'member' %}badge-ok{% elif v.stage == 'first_timer' %}badge-warn{% endif %}">{{ v.get_stage_display }}</span></td>
+      <td class="muted">{% if v.follow_up_member %}{{ v.follow_up_member.surname }} {{ v.follow_up_member.other_names }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No first-timers in this view.</p>
+  {% endif %}
+</div>
+{% endblock %}

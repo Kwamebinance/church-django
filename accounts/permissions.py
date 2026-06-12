@@ -136,3 +136,55 @@ def access_required(min_level):
             return view(request, *args, **kwargs)
         return wrapped
     return deco
+
+
+# ---- assignment management (reach + rank + applicability) -------------------
+def _my_rank_in_unit(profile, unit_type, unit_id):
+    """The highest leader-role rank this user holds in the given unit (or None).
+    Used to cap which roles they may grant (must be strictly below this)."""
+    if profile is None or not profile.member_id:
+        return None
+    from access.models import Assignment
+    field = {"cell": "cell_id", "fellowship": "fellowship_id", "department": "department_id"}.get(unit_type)
+    if not field:
+        return None
+    rows = (Assignment.objects
+            .filter(member_id=profile.member_id, end_date__isnull=True,
+                    role__is_leader=True, **{field: unit_id})
+            .select_related("role"))
+    ranks = [a.role.rank for a in rows]
+    return max(ranks) if ranks else None
+
+
+def can_manage_unit_assignment(profile, unit_type, unit_id, church_id):
+    """True if the user may add/change/end assignments for this unit:
+      - church_pastor/admin+ over the unit's church, OR
+      - an active leader of THIS unit (cell/fellowship/department)."""
+    if profile is None:
+        return False
+    if has_at_least(profile, AccessLevel.CHURCH_PASTOR):
+        reach = reach_church_ids(profile)
+        return reach is None or church_id in reach
+    import uuid as _uuid
+    if isinstance(unit_id, str):
+        try:
+            unit_id = _uuid.UUID(unit_id)
+        except (ValueError, TypeError):
+            return False
+    led = led_units(profile)
+    return unit_id in led.get(unit_type, set())
+
+
+def grantable_roles(profile, unit_type, unit_id, church):
+    """Roles this user may grant for the unit: applicable to the unit type, and
+    (for non-admins) ranked strictly below the user's own rank in that unit."""
+    from access.models import Role, UnitRoleApplicability
+    applicable_ids = UnitRoleApplicability.objects.filter(
+        unit_type=unit_type, role__church=church).values_list("role_id", flat=True)
+    qs = Role.objects.filter(church=church, archived_at__isnull=True, id__in=applicable_ids)
+    if has_at_least(profile, AccessLevel.ADMIN):
+        return qs.order_by("rank")
+    my_rank = _my_rank_in_unit(profile, unit_type, unit_id)
+    if my_rank is None:
+        return qs.none()
+    return qs.filter(rank__lt=my_rank).order_by("rank")

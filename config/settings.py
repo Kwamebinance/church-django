@@ -47,6 +47,10 @@ INSTALLED_APPS = [
     'events',
     'access',
     'attendance',
+    'firsttimers',
+    'family',
+    'birthdays',
+    'audit',
 ]
 
 # Use our custom user model (UUID pk, email/phone login) instead of the default.

@@ -147,6 +147,30 @@ class Member(models.Model):
     def __str__(self):
         return f"{self.surname} {self.other_names}".strip()
 
+    @staticmethod
+    def _media_url(path):
+        """Build a browser-usable URL from a stored media path. Handles paths
+        that are already absolute URLs or already MEDIA-prefixed."""
+        if not path:
+            return ""
+        if path.startswith(("http://", "https://", "/")):
+            return path
+        from django.conf import settings
+        return settings.MEDIA_URL.rstrip("/") + "/" + path.lstrip("/")
+
+    @property
+    def official_photo_url(self):
+        return self._media_url(self.official_photo_path)
+
+    @property
+    def display_photo_url(self):
+        return self._media_url(self.display_photo_path)
+
+    @property
+    def avatar_url(self):
+        """Best photo for an avatar: display photo, else official photo."""
+        return self.display_photo_url or self.official_photo_url
+
 
 # ==========================================================================
 # Profile (login account; one-to-one with the auth user)
