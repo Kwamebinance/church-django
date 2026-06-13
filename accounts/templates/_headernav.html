@@ -1,0 +1,16 @@
+{% comment %}
+Header-level back control + breadcrumb trail. Pages set:
+  {% block header_nav %}{% include "_headernav.html" with back="/url/" crumbs=crumb_list %}{% endblock %}
+where crumb_list is a list of (label, url) tuples; last item is current (no link).
+Simpler: pass back="/url/" and back_label="Members" for just a back button.
+{% endcomment %}
+<div class="header-nav">
+  {% if back %}<a class="back-btn" href="{{ back }}" aria-label="Back">‹ {{ back_label|default:"Back" }}</a>{% endif %}
+  {% if crumbs %}
+  <nav class="header-crumbs" aria-label="Breadcrumb">
+    {% for label, url in crumbs %}
+      {% if url %}<a href="{{ url }}">{{ label }}</a><span class="hc-sep">›</span>{% else %}<span class="hc-current">{{ label }}</span>{% endif %}
+    {% endfor %}
+  </nav>
+  {% endif %}
+</div>

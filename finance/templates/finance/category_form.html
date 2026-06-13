@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{% if c %}Edit{% else %}New{% endif %} Category{% endblock %}
+{% block page_heading %}{% if c %}Edit{% else %}New{% endif %} category — {{ account.name }}{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=config" back_label="Accounts & config" %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px;">
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:12px;"><label>Name</label>
+      <input type="text" name="name" class="select" value="{{ c.name|default:'' }}" required></div>
+    <div style="margin-bottom:12px;"><label>Short code</label>
+      <input type="text" name="short_code" class="select" value="{{ c.short_code|default:'' }}" required></div>
+    <div style="margin-bottom:12px;"><label>Display order</label>
+      <input type="number" name="display_order" class="select" value="{{ c.display_order|default:0 }}"></div>
+    <button type="submit" class="btn-accent">Save category</button>
+    <a class="btn-ghost" href="{% url 'fin_category_list' account.id %}" style="margin-left:8px;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

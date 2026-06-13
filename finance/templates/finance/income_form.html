@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load nav %}
+{% block title %}Record Income{% endblock %}
+{% block page_heading %}Record income{% endblock %}
+{% block nav_fin_income %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=income" back_label="Finance" %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:680px;">
+  <form method="post" id="incForm">
+    {% csrf_token %}
+    <div class="field-grid">
+      <div><label>Church</label>
+        <select name="church_id" id="churchSel" class="select" required>
+          {% for ch in churches %}<option value="{{ ch.id }}" data-currency="{{ ch.default_currency }}">{{ ch.name }} ({{ ch.default_currency }})</option>{% endfor %}
+        </select></div>
+      <div><label>Account</label>
+        <select name="account_id" id="accountSel" class="select" required>
+          {% for a in accounts %}<option value="{{ a.id }}" data-church="{{ a.church_id }}">{{ a.name }}</option>{% endfor %}
+        </select></div>
+      <div><label>Received date</label><input type="date" name="received_date" class="select" required></div>
+      <div><label>Payment method</label><input type="text" name="payment_method" class="select" placeholder="cash, transfer…"></div>
+      <div><label>Reference no.</label><input type="text" name="reference_number" class="select"></div>
+    </div>
+
+    <h3 style="margin:18px 0 6px;">Amount(s)</h3>
+    <p class="muted" style="font-size:12px;">Add multiple lines for a mixed-currency offering. Each is converted at the rate on the received date.</p>
+    <div id="lines">
+      <div class="line-row" style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="text" name="amount_0" class="select" placeholder="Amount" style="flex:1;" required>
+        <select name="currency_0" class="select currency-in" style="width:200px;" required>
+          {% for code, label in currencies %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="button" class="btn-ghost" id="addLine">+ Add another currency</button>
+
+    <div style="margin-top:14px;"><label>Notes</label><textarea name="notes" rows="2" class="select" style="width:100%;"></textarea></div>
+
+    <div style="margin-top:16px;">
+      <button type="submit" class="btn-accent">Record income</button>
+      <a class="btn-ghost" href="/finance/?tab=income" style="margin-left:8px;">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+(function(){
+  var CURRENCIES = [{% for code, label in currencies %}["{{ code }}","{{ label }}"]{% if not forloop.last %},{% endif %}{% endfor %}];
+  var n=1, lines=document.getElementById('lines');
+  var churchSel=document.getElementById('churchSel');
+  function baseCurrency(){ var o=churchSel.options[churchSel.selectedIndex]; return o?o.getAttribute('data-currency'):''; }
+  function optionsHtml(sel){ return CURRENCIES.map(function(c){ return '<option value="'+c[0]+'"'+(c[0]===sel?' selected':'')+'>'+c[1]+'</option>'; }).join(''); }
+  // preselect the first line to the church's base currency
+  function setFirst(){ var f=document.querySelector('.currency-in'); if(f) f.value=baseCurrency(); }
+  churchSel.addEventListener('change', setFirst); setFirst();
+  document.getElementById('addLine').addEventListener('click', function(){
+    var row=document.createElement('div'); row.className='line-row'; row.style.cssText='display:flex;gap:8px;margin-bottom:8px;';
+    row.innerHTML='<input type="text" name="amount_'+n+'" class="select" placeholder="Amount" style="flex:1;">'+
+                  '<select name="currency_'+n+'" class="select" style="width:200px;">'+optionsHtml('')+'</select>';
+    lines.appendChild(row); n++;
+  });
+})();
+</script>
+{% endblock %}

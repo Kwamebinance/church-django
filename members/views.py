@@ -219,6 +219,7 @@ def member_detail(request, member_id):
         "assign_options_json": assign_options_json, "has_assign_options": bool(assign_options),
         "change_role_opts_json": change_role_opts_json, "journey": journey,
         "history": history,
+        "hdr_crumbs": [(f"{member.surname} {member.other_names}", None)],
     })
 
 

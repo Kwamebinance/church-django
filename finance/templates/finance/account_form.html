@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{% if a %}Edit{% else %}New{% endif %} Account{% endblock %}
+{% block page_heading %}{% if a %}Edit{% else %}New{% endif %} finance account{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=config" back_label="Accounts & config" %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:12px;"><label>Name</label>
+      <input type="text" name="name" class="select" value="{{ a.name|default:'' }}" required></div>
+    <div style="margin-bottom:12px;"><label>Short code</label>
+      <input type="text" name="short_code" class="select" value="{{ a.short_code|default:'' }}" required></div>
+    <div style="margin-bottom:12px;"><label>Church</label>
+      <select name="church_id" class="select" required>
+        {% for ch in churches %}<option value="{{ ch.id }}" {% if a and a.church_id == ch.id %}selected{% endif %}>{{ ch.name }}</option>{% endfor %}
+      </select></div>
+    <div style="margin-bottom:12px;"><label><input type="checkbox" name="is_income" {% if not a or a.is_income %}checked{% endif %}> Income account (uncheck for expense)</label></div>
+    <div style="margin-bottom:12px;"><label>Display order</label>
+      <input type="number" name="display_order" class="select" value="{{ a.display_order|default:0 }}"></div>
+    <button type="submit" class="btn-accent">Save account</button>
+    <a class="btn-ghost" href="{% url 'fin_account_list' %}" style="margin-left:8px;">Cancel</a>
+  </form>
+  {% if a %}
+  <form method="post" action="{% url 'fin_account_archive' a.id %}" style="margin-top:14px;" data-confirm="Archive this account?" data-danger>
+    {% csrf_token %}<button type="submit" class="btn-ghost" style="color:var(--danger);">Archive account</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

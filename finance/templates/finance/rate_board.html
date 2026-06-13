@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Exchange Rates{% endblock %}
+{% block page_heading %}Finance · Exchange rates{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=config" back_label="Finance" %}{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="filter-row" style="margin-bottom:0;">
+    <label style="margin-right:8px;align-self:center;">Church</label>
+    <select name="church" class="select" onchange="this.form.submit()" style="max-width:340px;">
+      {% for ch in churches %}<option value="{{ ch.id }}" {% if church and church.id == ch.id %}selected{% endif %}>{{ ch.name }} (base {{ ch.default_currency }})</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if church %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h2 style="margin:0;">Rates for {{ church.name }}</h2>
+    <a class="btn-ghost" href="{% url 'fin_rate_history' church.id %}">View history</a>
+  </div>
+  <p class="muted" style="font-size:13px;">Enter how many <strong>{{ church.default_currency }}</strong> one unit of each currency is worth. Update only the ones that changed, then save once.</p>
+  <form method="post" action="{% url 'fin_rate_save' %}">
+    {% csrf_token %}
+    <input type="hidden" name="church_id" value="{{ church.id }}">
+    <table class="data">
+      <tr><th>Currency</th><th>1 unit = ? {{ church.default_currency }}</th><th>Current</th><th>Last set</th></tr>
+      {% for p in pairs %}
+      <tr>
+        <td><strong>{{ p.quote }}</strong> → {{ p.base }}</td>
+        <td><input type="text" name="rate_{{ p.quote }}" class="select" style="max-width:160px;" placeholder="{% if p.rate %}{{ p.rate|rate_display }}{% else %}not set{% endif %}"></td>
+        <td>{% if p.rate %}{{ p.rate|rate_display }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="muted">{% if p.effective_from %}{{ p.effective_from|date:"j M Y" }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <button type="submit" class="btn-accent" style="margin-top:12px;">Save rates</button>
+  </form>
+</div>
+{% else %}
+<div class="card"><p class="muted">No church available.</p></div>
+{% endif %}
+{% endblock %}

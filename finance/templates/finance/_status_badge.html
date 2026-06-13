@@ -1,0 +1,4 @@
+{% if status == 'approved' %}<span class="badge badge-ok">Approved</span>
+{% elif status == 'pending' %}<span class="badge badge-warn">Pending</span>
+{% elif status == 'rejected' %}<span class="badge badge-danger">Rejected</span>
+{% elif status == 'voided' %}<span class="badge">Voided</span>{% endif %}

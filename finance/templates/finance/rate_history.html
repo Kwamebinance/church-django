@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% load nav %}
+{% load money %}
+{% block title %}Rate History{% endblock %}
+{% block page_heading %}Rate history — {{ church.name }}{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/rates/" back_label="Exchange rates" %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% if rates %}
+  <table class="data">
+    <tr><th>Pair</th><th>Rate</th><th>Effective from</th></tr>
+    {% for r in rates %}
+    <tr><td><strong>{{ r.base_currency }} → {{ r.quote_currency }}</strong></td><td>{{ r.rate|rate_display }}</td><td class="muted">{{ r.effective_from|date:"j M Y, g:i a" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No rate history yet.</p>{% endif %}
+</div>
+{% endblock %}

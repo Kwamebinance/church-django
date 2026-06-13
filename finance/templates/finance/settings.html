@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Finance Settings{% endblock %}
+{% block page_heading %}Finance settings — {{ church.name }}{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=config" back_label="Finance" %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:12px;"><label>Base currency</label>
+      <input type="text" class="select" value="{{ church.default_currency }}" disabled>
+      <p class="muted" style="font-size:12px;">Set on the church record.</p></div>
+    <div style="margin-bottom:12px;"><label>Display currencies (comma-separated)</label>
+      <input type="text" name="display_currencies" class="select" value="{{ s.display_currencies|join:', ' }}" placeholder="GHS, USD, NGN"></div>
+    <div style="margin-bottom:12px;"><label><input type="checkbox" name="require_income_approval" {% if s.require_income_approval %}checked{% endif %}> Require approval for income entries</label></div>
+    <div style="margin-bottom:12px;"><label><input type="checkbox" name="allow_self_approval" {% if s.allow_self_approval %}checked{% endif %}> Allow self-approval (recorder can approve their own income — for single-treasurer churches)</label></div>
+    <button type="submit" class="btn-accent">Save settings</button>
+  </form>
+</div>
+{% endblock %}

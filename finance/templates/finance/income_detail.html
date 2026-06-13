@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load nav %}
+{% load money %}
+{% block title %}Income record{% endblock %}
+{% block page_heading %}Income record{% endblock %}
+{% block nav_fin_income %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=income" back_label="Finance" crumbs=hdr_crumbs %}{% endblock %}
+{% block content %}
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:10px;">
+    <div>
+      <h2 style="margin:0;">{% money r.base_amount r.church.default_currency r.espees_amount r.church %}</h2>
+      <p class="muted" style="margin:4px 0 0;">{{ r.account.name }}{% if r.category %} · {{ r.category.name }}{% endif %} · {{ r.church.name }}</p>
+    </div>
+    <div>
+      {% if r.status == 'approved' %}<span class="badge badge-ok">Approved</span>
+      {% elif r.status == 'pending' %}<span class="badge badge-warn">Pending approval</span>
+      {% elif r.status == 'rejected' %}<span class="badge badge-danger">Rejected</span>
+      {% elif r.status == 'voided' %}<span class="badge">Voided</span>{% endif %}
+    </div>
+  </div>
+
+  <table class="data" style="margin-top:14px;">
+    <tr><td class="muted" style="width:180px;">Received</td><td>{{ r.received_date|date:"j M Y" }}</td></tr>
+    <tr><td class="muted">Amount</td><td>{{ r.amount|amount }} {{ r.currency }}{% if not r.is_multi_currency and r.exchange_rate %} (rate {{ r.exchange_rate|rate_display }}){% endif %}</td></tr>
+    {% if r.is_multi_currency %}
+    <tr><td class="muted">Currency breakdown</td><td>
+      {% for l in lines %}{{ l.amount|amount }} {{ l.currency }} (rate {{ l.rate|rate_display }})<br>{% endfor %}
+      <strong>= {{ r.base_amount|amount }} {{ r.church.default_currency }}</strong>
+    </td></tr>
+    {% endif %}
+    {% if r.member %}<tr><td class="muted">Giver</td><td>{{ r.member.surname }} {{ r.member.other_names }}</td></tr>{% endif %}
+    {% if r.payment_method %}<tr><td class="muted">Method</td><td>{{ r.payment_method }}</td></tr>{% endif %}
+    {% if r.reference_number %}<tr><td class="muted">Reference</td><td>{{ r.reference_number }}</td></tr>{% endif %}
+    {% if r.notes %}<tr><td class="muted">Notes</td><td>{{ r.notes }}</td></tr>{% endif %}
+    {% if r.approved_at %}<tr><td class="muted">Approved</td><td>{{ r.approved_at|date:"j M Y, g:i a" }}</td></tr>{% endif %}
+    {% if r.rejection_reason %}<tr><td class="muted">Rejection reason</td><td>{{ r.rejection_reason }}</td></tr>{% endif %}
+    {% if r.void_reason %}<tr><td class="muted">Void reason</td><td>{{ r.void_reason }}</td></tr>{% endif %}
+  </table>
+</div>
+
+{% if r.status == 'pending' %}
+<div class="card">
+  <h3 style="margin-top:0;">Approval</h3>
+  {% if not can_act %}
+  <p class="muted">You submitted this record, so you can't approve or reject it yourself. Another treasurer must review it.</p>
+  {% else %}
+  {% if is_submitter %}<p class="muted" style="font-size:12px;">Self-approval is enabled for this church.</p>{% endif %}
+  <form method="post" action="{% url 'fin_income_approve' r.id %}" style="display:inline;" data-confirm="Approve this income record?">
+    {% csrf_token %}<button type="submit" class="btn-accent">Approve</button>
+  </form>
+  <button type="button" class="btn-ghost" id="rejectBtn" style="color:var(--danger);margin-left:8px;">Reject</button>
+  <form method="post" action="{% url 'fin_income_reject' r.id %}" id="rejectForm" style="display:none;margin-top:10px;">
+    {% csrf_token %}
+    <input type="text" name="reason" class="select" placeholder="Reason for rejection" required style="width:100%;max-width:400px;">
+    <button type="submit" class="btn-ghost" style="color:var(--danger);">Confirm rejection</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if r.status == 'approved' or r.status == 'pending' %}
+<div class="card">
+  <h3 style="margin-top:0;">Void</h3>
+  <p class="muted" style="font-size:13px;">Voiding is permanent. The record is kept as history.</p>
+  <button type="button" class="btn-ghost" id="voidBtn" style="color:var(--danger);">Void this record</button>
+  <form method="post" action="{% url 'fin_income_void' r.id %}" id="voidForm" style="display:none;margin-top:10px;">
+    {% csrf_token %}
+    <input type="text" name="reason" class="select" placeholder="Reason for voiding" required style="width:100%;max-width:400px;">
+    <button type="submit" class="btn-ghost" style="color:var(--danger);">Confirm void</button>
+  </form>
+</div>
+{% endif %}
+
+<script>
+(function(){
+  function toggle(btn, form){ var b=document.getElementById(btn), f=document.getElementById(form);
+    if(b) b.addEventListener('click', function(){ f.style.display = f.style.display==='none'?'block':'none'; }); }
+  toggle('rejectBtn','rejectForm'); toggle('voidBtn','voidForm');
+})();
+</script>
+{% endblock %}

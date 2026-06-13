@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Pending Approval{% endblock %}
+{% block page_heading %}Finance · Pending approval{% endblock %}
+{% block nav_fin_pending %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/income/" back_label="Income" %}{% endblock %}
+{% block content %}
+<div class="card">
+  {% if rows %}
+  <p class="muted">Income awaiting approval. You can't approve records you submitted yourself.</p>
+  <table class="data">
+    <tr><th>Date</th><th>Account</th><th>Amount</th><th>Submitted</th><th></th></tr>
+    {% for row in rows %}
+    <tr>
+      <td class="muted">{{ row.r.received_date|date:"j M Y" }}</td>
+      <td><strong>{{ row.r.account.name }}</strong>{% if row.r.category %} · {{ row.r.category.name }}{% endif %}<br><span class="muted" style="font-size:12px;">{{ row.r.church.name }}</span></td>
+      <td>{% money row.r.base_amount row.r.church.default_currency row.r.espees_amount %}</td>
+      <td>{% if row.is_mine %}<span class="badge badge-warn">Yours</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td style="text-align:right;"><a class="btn-accent" href="{% url 'fin_income_detail' row.r.id %}">Review</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:30px 0;">
+    <div style="font-size:32px;">✓</div>
+    <p class="muted">Nothing awaiting approval. You're all caught up.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

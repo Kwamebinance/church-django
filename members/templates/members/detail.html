@@ -3,8 +3,8 @@
 {% block title %}{{ m.surname }} {{ m.other_names }}{% endblock %}
 {% block page_heading %}Member{% endblock %}
 {% block nav_members %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/members/" back_label="Members" crumbs=hdr_crumbs %}{% endblock %}
 {% block content %}
-{% crumbs home_url="/members/" home_label="Members" current_label=m.surname|add:" "|add:m.other_names %}
 
 {# ---------- header ---------- #}
 <div class="card profile-header">

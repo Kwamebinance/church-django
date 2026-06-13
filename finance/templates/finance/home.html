@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Finance{% endblock %}
+{% block page_heading %}Finance{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block topbar_actions %}
+  {% if tab == "income" %}<a class="btn-accent" href="{% url 'fin_income_create' %}">+ Record income</a>{% endif %}
+{% endblock %}
+{% block content %}
+
+<div class="tabs">
+  <a class="tab {% if tab == 'dashboard' %}tab-active{% endif %}" href="?tab=dashboard">Dashboard</a>
+  <a class="tab {% if tab == 'pending' %}tab-active{% endif %}" href="?tab=pending">Pending approval{% if fin_pending_count %} <span class="tab-badge">{{ fin_pending_count }}</span>{% endif %}</a>
+  <a class="tab {% if tab == 'income' %}tab-active{% endif %}" href="?tab=income">Income</a>
+  <a class="tab {% if tab == 'expense' %}tab-active{% endif %}" href="?tab=expense">Expense</a>
+  <a class="tab {% if tab == 'config' %}tab-active{% endif %}" href="?tab=config">Accounts &amp; config</a>
+</div>
+
+{# ---------------- DASHBOARD ---------------- #}
+{% if tab == "dashboard" %}
+  <div class="stat-row">
+    <div class="stat-card"><div class="stat-label">Approved records</div><div class="stat-value">{{ dash_total_records }}</div></div>
+    <div class="stat-card"><div class="stat-label">Awaiting approval</div><div class="stat-value">{{ dash_pending_n }}</div>{% if dash_pending_n %}<a class="stat-link" href="?tab=pending">Review →</a>{% endif %}</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Approved income by church</h3>
+    {% if dash_by_church %}
+    <table class="data">
+      <tr><th>Church</th><th>Records</th><th>Total</th></tr>
+      {% for c in dash_by_church %}
+      <tr>
+        <td><strong>{{ c.church__name }}</strong></td>
+        <td class="muted">{{ c.n }}</td>
+        <td>{% money c.total c.church__default_currency c.espees %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No approved income yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Recent activity</h3>
+    {% if dash_recent %}
+    <table class="data">
+      <tr><th>Date</th><th>Account</th><th>Amount</th><th>Status</th></tr>
+      {% for r in dash_recent %}
+      <tr>
+        <td class="muted">{{ r.received_date|date:"j M Y" }}</td>
+        <td>{{ r.account.name }} <span class="muted" style="font-size:12px;">· {{ r.church.name }}</span></td>
+        <td>{% money r.base_amount r.church.default_currency r.espees_amount r.church %}</td>
+        <td>{% include "finance/_status_badge.html" with status=r.status %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No activity yet.</p>{% endif %}
+  </div>
+
+{# ---------------- PENDING ---------------- #}
+{% elif tab == "pending" %}
+  <div class="card">
+    {% if pending_rows %}
+    <p class="muted">Income awaiting approval. You can't approve records you submitted yourself.</p>
+    <table class="data">
+      <tr><th>Date</th><th>Account</th><th>Amount</th><th>Submitted</th><th></th></tr>
+      {% for row in pending_rows %}
+      <tr>
+        <td class="muted">{{ row.r.received_date|date:"j M Y" }}</td>
+        <td><strong>{{ row.r.account.name }}</strong>{% if row.r.category %} · {{ row.r.category.name }}{% endif %}<br><span class="muted" style="font-size:12px;">{{ row.r.church.name }}</span></td>
+        <td>{% money row.r.base_amount row.r.church.default_currency row.r.espees_amount row.r.church %}</td>
+        <td>{% if row.is_mine %}<span class="badge badge-warn">Yours</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td style="text-align:right;"><a class="btn-accent" href="{% url 'fin_income_detail' row.r.id %}">Review</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div style="text-align:center;padding:30px 0;"><div style="font-size:32px;">✓</div><p class="muted">Nothing awaiting approval. You're all caught up.</p></div>
+    {% endif %}
+  </div>
+
+{# ---------------- INCOME ---------------- #}
+{% elif tab == "income" %}
+  <div class="card">
+    <form method="get" class="filter-row" style="margin-bottom:0;">
+      <input type="hidden" name="tab" value="income">
+      <select name="status" class="select" onchange="this.form.submit()">
+        <option value="">All statuses</option>
+        {% for val, label in statuses %}<option value="{{ val }}" {% if income_status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </form>
+  </div>
+  <div class="card">
+    {% if page.object_list %}
+    <table class="data">
+      <tr><th>Date</th><th>Account</th><th>Amount</th><th>Base</th><th>Status</th><th></th></tr>
+      {% for r in page.object_list %}
+      <tr>
+        <td class="muted">{{ r.received_date|date:"j M Y" }}</td>
+        <td><strong>{{ r.account.name }}</strong>{% if r.category %} · {{ r.category.name }}{% endif %}<br><span class="muted" style="font-size:12px;">{{ r.church.name }}</span></td>
+        <td>{{ r.amount|amount }} {{ r.currency }}{% if r.is_multi_currency %} <span class="muted">+more</span>{% endif %}</td>
+        <td>{% money r.base_amount r.church.default_currency r.espees_amount r.church %}</td>
+        <td>{% include "finance/_status_badge.html" with status=r.status %}</td>
+        <td style="text-align:right;"><a class="btn-ghost" href="{% url 'fin_income_detail' r.id %}">View</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if page.has_other_pages %}
+    <div class="pager">
+      {% if page.has_previous %}<a class="btn-ghost" href="?tab=income&page={{ page.previous_page_number }}">‹ Prev</a>{% endif %}
+      <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+      {% if page.has_next %}<a class="btn-ghost" href="?tab=income&page={{ page.next_page_number }}">Next ›</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}<p class="muted">No income records. <a href="{% url 'fin_income_create' %}">Record one</a>.</p>{% endif %}
+  </div>
+
+{# ---------------- EXPENSE (stub) ---------------- #}
+{% elif tab == "expense" %}
+  <div class="card" style="text-align:center;padding:36px 0;">
+    <div style="font-size:30px;">🚧</div>
+    <h3>Expenses</h3>
+    <p class="muted">Expense recording is coming next. It will mirror the income workflow (record → approve → void), with the same dual-currency display.</p>
+  </div>
+
+{# ---------------- CONFIG ---------------- #}
+{% elif tab == "config" %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h3 style="margin:0;">Accounts</h3>
+      <div>
+        <a class="btn-ghost" href="{% url 'fin_rate_list' %}">Exchange rates</a>
+        <a class="btn-accent" href="{% url 'fin_account_create' %}">+ New account</a>
+      </div>
+    </div>
+    {% if config_accounts %}
+    <table class="data" style="margin-top:12px;">
+      <tr><th>Account</th><th>Church</th><th>Type</th><th></th></tr>
+      {% for a in config_accounts %}
+      <tr>
+        <td><strong>{{ a.name }}</strong></td>
+        <td class="muted">{{ a.church.name }}</td>
+        <td>{% if a.is_income %}<span class="badge badge-ok">Income</span>{% else %}<span class="badge">Expense</span>{% endif %}</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <a class="btn-ghost" href="{% url 'fin_category_list' a.id %}">Categories</a>
+          <a class="btn-ghost" href="{% url 'fin_account_edit' a.id %}">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}<p class="muted">No finance accounts yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Church finance settings</h3>
+    <p class="muted" style="font-size:13px;">Approval rules, self-approval, and display currencies per church.</p>
+    <table class="data">
+      <tr><th>Church</th><th>Base currency</th><th></th></tr>
+      {% for ch in config_churches %}
+      <tr>
+        <td><strong>{{ ch.name }}</strong></td>
+        <td class="muted">{{ ch.default_currency }}</td>
+        <td style="text-align:right;"><a class="btn-ghost" href="{% url 'fin_settings' ch.id %}">Settings</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

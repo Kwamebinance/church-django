@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Income{% endblock %}
+{% block page_heading %}Finance · Income{% endblock %}
+{% block nav_fin_income %}active{% endblock %}
+{% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'fin_account_list' %}">Accounts &amp; config</a>
+  <a class="btn-accent" href="{% url 'fin_income_create' %}">+ Record income</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <form method="get" class="filter-row">
+    <select name="status" class="select" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for val, label in statuses %}<option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select name="account" class="select" onchange="this.form.submit()">
+      <option value="">All accounts</option>
+      {% for a in accounts %}<option value="{{ a.id }}" {% if request.GET.account == a.id|stringformat:'s' %}selected{% endif %}>{{ a.name }} ({{ a.church.name }})</option>{% endfor %}
+    </select>
+  </form>
+</div>
+<div class="card">
+  {% if page.object_list %}
+  <table class="data">
+    <tr><th>Date</th><th>Account</th><th>Amount</th><th>Base</th><th>Status</th><th></th></tr>
+    {% for r in page.object_list %}
+    <tr>
+      <td class="muted">{{ r.received_date|date:"j M Y" }}</td>
+      <td><strong>{{ r.account.name }}</strong>{% if r.category %} · {{ r.category.name }}{% endif %}<br><span class="muted" style="font-size:12px;">{{ r.church.name }}</span></td>
+      <td>{{ r.amount|amount }} {{ r.currency }}{% if r.is_multi_currency %} <span class="muted">+more</span>{% endif %}</td>
+      <td>{% money r.base_amount r.church.default_currency r.espees_amount %}</td>
+      <td>
+        {% if r.status == 'approved' %}<span class="badge badge-ok">Approved</span>
+        {% elif r.status == 'pending' %}<span class="badge badge-warn">Pending</span>
+        {% elif r.status == 'rejected' %}<span class="badge badge-danger">Rejected</span>
+        {% elif r.status == 'voided' %}<span class="badge">Voided</span>{% endif %}
+      </td>
+      <td style="text-align:right;"><a class="btn-ghost" href="{% url 'fin_income_detail' r.id %}">View</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if page.has_other_pages %}
+  <div class="pager">
+    {% if page.has_previous %}<a class="btn-ghost" href="?page={{ page.previous_page_number }}&{{ querystring }}">‹ Prev</a>{% endif %}
+    <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn-ghost" href="?page={{ page.next_page_number }}&{{ querystring }}">Next ›</a>{% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <p class="muted">No income records{% if status %} with status "{{ status }}"{% endif %}. <a href="{% url 'fin_income_create' %}">Record one</a>.</p>
+  {% endif %}
+</div>
+{% endblock %}

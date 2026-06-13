@@ -14,6 +14,7 @@ urlpatterns = [
     path("", include("attendance.urls")),
     path("", include("firsttimers.urls")),
     path("", include("birthdays.urls")),
+    path("", include("finance.urls")),
 ]
 
 if settings.DEBUG:

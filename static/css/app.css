@@ -107,9 +107,24 @@ a:hover { text-decoration: underline; }
 .content { flex: 1; margin-left: var(--sidebar-w); min-width: 0; }
 .topbar {
   background: var(--surface); border-bottom: 1px solid var(--line);
-  padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
+.topbar-head { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .topbar h1 { font-size: 18px; margin: 0; color: var(--ink); font-weight: 650; }
+.topbar-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+/* header-level back + breadcrumbs (above the page heading, always visible) */
+.header-nav { display: flex; align-items: center; gap: 12px; margin-bottom: 1px; min-height: 18px; }
+.back-btn {
+  font-size: 12px; font-weight: 600; color: var(--ink-soft); text-decoration: none;
+  padding: 2px 9px 2px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+  transition: background .12s, color .12s;
+}
+.back-btn:hover { background: var(--surface-2, #eef1f6); color: var(--ink); }
+.header-crumbs { font-size: 12px; color: var(--ink-soft); display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.header-crumbs a { color: var(--ink-soft); text-decoration: none; }
+.header-crumbs a:hover { color: var(--ink); text-decoration: underline; }
+.header-crumbs .hc-sep { color: var(--line-strong, #c8cdd6); }
+.header-crumbs .hc-current { color: var(--ink); font-weight: 600; }
 .page { padding: 26px 28px; max-width: 1480px; }
 
 /* ============================================================================
@@ -414,3 +429,22 @@ h1.page-title { font-size: 20px; margin: 0 0 4px; color: var(--ink); }
 .audit-main{font-size:14px;color:var(--ink);}
 .audit-meta{font-size:12px;color:var(--ink-soft);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .audit-action{text-transform:uppercase;letter-spacing:.04em;font-size:10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:1px 7px;}
+
+/* money dual-display (base currency + ESPEES equivalent) */
+.money{display:inline-block;line-height:1.25;}
+.money-main{font-weight:600;color:var(--ink);}
+.money-espees{font-size:11px;color:var(--ink-soft);letter-spacing:.01em;}
+
+/* nav pending badge */
+.nav-badge{display:inline-block;background:var(--accent,#c79a3a);color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:0 7px;margin-left:4px;line-height:18px;min-width:18px;text-align:center;}
+
+/* finance home: tab badge + dashboard stat cards */
+.tab-badge{display:inline-block;background:var(--accent,#c79a3a);color:#fff;font-size:10px;font-weight:600;border-radius:999px;padding:0 6px;line-height:16px;min-width:16px;text-align:center;vertical-align:middle;}
+.stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.stat-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r,10px);padding:16px 20px;min-width:180px;flex:1;}
+.stat-label{font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+.stat-value{font-size:28px;font-weight:650;color:var(--ink);margin-top:4px;}
+.stat-link{font-size:13px;color:var(--accent,#c79a3a);text-decoration:none;display:inline-block;margin-top:6px;}
+
+/* ESPEES live estimate marker (vs frozen historical value) */
+.money-est{font-style:italic;opacity:.75;font-size:10px;}

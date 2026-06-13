@@ -153,3 +153,37 @@ class Cell(models.Model):
 
     def __str__(self):
         return self.name
+class ChurchSettings(models.Model):
+    """Per-church configuration — faithful port of the original church_settings
+    table (one home for all church config). Comms/SMTP fields are present but
+    dormant until the Comms domain is built; finance fields are active now.
+    """
+    church = models.OneToOneField(Church, on_delete=models.CASCADE,
+                                  primary_key=True, related_name="settings",
+                                  db_column="church_id")
+    # --- comms (dormant until Comms is built) ---
+    sms_api_key = models.TextField(null=True, blank=True)
+    sms_sender_id = models.TextField(null=True, blank=True)
+    sms_dev_mode = models.BooleanField(null=True, blank=True)
+    smtp_host = models.TextField(null=True, blank=True)
+    smtp_port = models.IntegerField(null=True, blank=True)
+    smtp_user = models.TextField(null=True, blank=True)
+    smtp_password = models.TextField(null=True, blank=True)
+    smtp_from_email = models.TextField(null=True, blank=True)
+    smtp_from_name = models.TextField(null=True, blank=True)
+    smtp_secure = models.BooleanField(null=True, blank=True)
+    # --- finance (active now) ---
+    require_income_approval = models.BooleanField(null=True, blank=True, default=True)
+    # When True, the recorder may approve their own income (for churches/groups
+    # with a single treasurer). Default False keeps separation of duties.
+    allow_self_approval = models.BooleanField(null=True, blank=True, default=False)
+    display_currencies = models.JSONField(null=True, blank=True, default=list)
+    # --- audit ---
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by_member_id = models.UUIDField(null=True, blank=True)
+
+    class Meta:
+        db_table = "church_settings"
+
+    def __str__(self):
+        return f"Settings for {self.church_id}"

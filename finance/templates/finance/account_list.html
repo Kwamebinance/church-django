@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Finance Accounts{% endblock %}
+{% block page_heading %}Finance · Accounts{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block header_nav %}{% include "_headernav.html" with back="/finance/?tab=config" back_label="Finance" %}{% endblock %}
+{% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'fin_rate_list' %}">Exchange rates</a>
+  <a class="btn-accent" href="{% url 'fin_account_create' %}">+ New account</a>
+{% endblock %}
+{% block content %}
+<div class="card">
+  {% if accounts %}
+  <table class="data">
+    <tr><th>Account</th><th>Church</th><th>Type</th><th>Code</th><th></th></tr>
+    {% for a in accounts %}
+    <tr>
+      <td><strong>{{ a.name }}</strong></td>
+      <td class="muted">{{ a.church.name }}</td>
+      <td>{% if a.is_income %}<span class="badge badge-ok">Income</span>{% else %}<span class="badge">Expense</span>{% endif %}</td>
+      <td class="muted" style="font-family:monospace;">{{ a.short_code }}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <a class="btn-ghost" href="{% url 'fin_category_list' a.id %}">Categories</a>
+        <a class="btn-ghost" href="{% url 'fin_account_edit' a.id %}">Edit</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No finance accounts yet. Create one to start organising income and expenses.</p>
+  {% endif %}
+</div>
+{% endblock %}

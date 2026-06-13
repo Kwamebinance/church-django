@@ -27,7 +27,25 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "unsafe-dev-key")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+# Hosts the app may be served from. Defaults cover localhost + LAN access; can be
+# extended via the ALLOWED_HOSTS env var (comma-separated) for the on-prem server.
+ALLOWED_HOSTS = [
+    "localhost", "127.0.0.1", "[::1]", "0.0.0.0",
+] + [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()]
+
+# CSRF must trust the exact origin (scheme + host + port) the browser sends.
+# Django 4+ validates the Origin header against this list for POST requests, so
+# accessing via a machine name or LAN IP (not just localhost) needs to be listed
+# here or POSTs fail with "CSRF token incorrect" even though the token is present.
+_csrf_hosts = ["localhost", "127.0.0.1"] + [
+    h.strip() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()
+]
+CSRF_TRUSTED_ORIGINS = []
+for _h in _csrf_hosts:
+    for _port in ("", ":8000", ":80"):
+        CSRF_TRUSTED_ORIGINS.append(f"http://{_h}{_port}")
+        CSRF_TRUSTED_ORIGINS.append(f"https://{_h}{_port}")
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 
 
 # Application definition
@@ -51,6 +69,7 @@ INSTALLED_APPS = [
     'family',
     'birthdays',
     'audit',
+    'finance',
 ]
 
 # Use our custom user model (UUID pk, email/phone login) instead of the default.
@@ -82,6 +101,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'finance.context_processors.finance_badges',
                 'django.template.context_processors.media',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',

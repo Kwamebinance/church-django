@@ -22,6 +22,10 @@
         <a class="nav-link {% block nav_birthdays %}{% endblock %}" href="{% url 'birthday_list' %}">Birthdays</a>
         <a class="nav-link {% block nav_registrations %}{% endblock %}" href="{% url 'reg_queue' %}">Registrations</a>
 
+        {% if pending_income_count is not None %}
+        <a class="nav-link {% block nav_finance %}{% endblock %}" href="{% url 'fin_home' %}">Finance{% if pending_income_count %} <span class="nav-badge">{{ pending_income_count }}</span>{% endif %}</a>
+        {% endif %}
+
         <div class="nav-section">Gatherings</div>
         <a class="nav-link {% block nav_events %}{% endblock %}" href="{% url 'event_calendar' %}">Calendar</a>
         <a class="nav-link {% block nav_templates %}{% endblock %}" href="{% url 'template_list' %}">Recurring</a>
@@ -37,8 +41,11 @@
     </aside>
     <div class="content">
       <div class="topbar">
-        <h1>{% block page_heading %}{% endblock %}</h1>
-        {% block topbar_actions %}{% endblock %}
+        <div class="topbar-head">
+          {% block header_nav %}{% endblock %}
+          <h1>{% block page_heading %}{% endblock %}</h1>
+        </div>
+        <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
       </div>
       <div class="page">
         {% if messages %}

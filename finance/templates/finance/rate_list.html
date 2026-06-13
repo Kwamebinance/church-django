@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Exchange Rates{% endblock %}
+{% block page_heading %}Finance · Exchange rates{% endblock %}
+{% block nav_finance %}active{% endblock %}
+{% block topbar_actions %}<a class="btn-ghost" href="{% url 'fin_account_list' %}">Accounts</a>{% endblock %}
+{% block content %}
+<div class="card" style="max-width:680px;">
+  <h2 style="margin-top:0;">Add a rate</h2>
+  <form method="post" action="{% url 'fin_rate_add' %}">
+    {% csrf_token %}
+    <div class="field-grid">
+      <div><label>Base currency</label>
+        <select name="base_currency" class="select" required>
+          {% for code, label in currencies %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <div><label>Quote currency</label>
+        <select name="quote_currency" class="select" required>
+          {% for code, label in currencies %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <div><label>Rate (1 base = ? quote)</label><input type="text" name="rate" class="select" placeholder="0.083" required></div>
+      <div><label>Effective from</label><input type="datetime-local" name="effective_from" class="select"></div>
+    </div>
+    <button type="submit" class="btn-accent" style="margin-top:10px;">Add rate</button>
+    <p class="muted" style="font-size:12px;margin-top:8px;">Leave church blank for a global rate. Conversion uses the most recent rate effective on or before the transaction date.</p>
+  </form>
+</div>
+<div class="card">
+  <h2 style="margin-top:0;">Recent rates</h2>
+  {% if rates %}
+  <table class="data">
+    <tr><th>Pair</th><th>Rate</th><th>Effective from</th><th>Scope</th></tr>
+    {% for r in rates %}
+    <tr>
+      <td><strong>{{ r.base_currency }} → {{ r.quote_currency }}</strong></td>
+      <td>{{ r.rate }}</td>
+      <td class="muted">{{ r.effective_from|date:"j M Y, g:i a" }}</td>
+      <td class="muted">{% if r.church %}{{ r.church.name }}{% else %}Global{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No exchange rates recorded yet.</p>{% endif %}
+</div>
+{% endblock %}
